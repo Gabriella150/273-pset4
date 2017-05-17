@@ -125,6 +125,20 @@ Summary statistics.
 \item[(1)] In the outer loop we search over a grid of values for $(\theta_1, \beta, RC)$, and compute the log likelihood function:
 \[\text{log}L = \sum_{b} \{\sum_{t} \text{log} \mathbb{P}(i_{bt}|x_{bt}) + \sum_t \text{log} \mathbb{P}(x_{bt}|x_{bt-1},i_{t-1})\}\]
 where $b$ indexes for bus and $t$ indexes for time period. We compute a log likelihood for each combination of values for $(\theta_1, \beta, RC)$ and choose the one that has the maximal value as our maximum likelihood estimation.
+
+\item[(2)] In Hotz-Miller's approach, we will estimate the choice specific value function (as opposed to the expected value function as in Rust). We start by noting that conditional choice probability is observed directly from the data:
+\[\hat{\mathbb{P}}(i=1|x) = \frac{\sum_{b}\sum_{t} 1_{\{i_{bt}=1, x_{bt}=x\}}}{\sum_{b}\sum_{t} 1_{\{x_{bt}=x\}}}\]
+The choice-specific value function (minus the structural error, and suppressing the dependency on $\theta_1, \theta_3$) can be presented recursively in the following form:
+\[\tilde{V}(x_t,i_t) = u(x_t,i_t)+\beta\mathbb{E}_{x_{t+1}}[\mathbb{E}_{i_{t+1}}[\mathbb{E}_{\epsilon_{t+1}}[u(x_{t+1},i_{t+1})+\epsilon_{t+1}+\beta(\cdot\cdot\cdot)|i_{t+1},x_{t+1}]|x_{t+1}]|x_t,i_t]\]
+where $(\cdot\cdot\cdot)$ represents higher (two and above) period forward expectations. In principle it's an infinite loop but in practice we need to stop at some $T$, for example, when $T=2$, $(\cdot\cdot\cdot)$ simplifies to:
+\[(\cdot\cdot\cdot) = \mathbb{E}_{x_{t+2}}[\mathbb{E}_{i_{t+2}}[\mathbb{E}_{\epsilon_{t+2}}[u(x_{t+2},i_{t+2})+\epsilon_{t+2}|i_{t+2},x_{t+2}]|x_{t+2}]|x_{t+1},i_{t+1}]\]
+For simplicity, in the code we use one-period forward simulation where:
+\[\tilde{V}(x_t,i_t) = u(x_t,i_t)+\beta\mathbb{E}_{x_{t+1}}[\mathbb{E}_{i_{t+1}}[\mathbb{E}_{\epsilon_{t+1}}[u(x_{t+1},i_{t+1})+\epsilon_{t+1}|i_{t+1},x_{t+1}]|x_{t+1}]|x_t,i_t]\]
+it is estimated as:
+\[\hat{\tilde{V}}(x_t,i_t) = \frac{1}{S} \sum_{s} [u(x_t,i_t)+\beta[u(x^s_{t+1},i^s_{t+1})+\gamma -\text{log}(\hat{\mathbb{P}}(i^s_{t+1}|x^s_{t+1}))]]\]
+where $x^s_{t+1}$ is drawn from the transition probability $\hat{\theta}_{30}, \hat{\theta}_{31}, \hat{\theta}_{32}$, and $i^s_{t+1}$ is drawn from $\hat{\mathbb{P}}(i|x)$, $\gamma$ is the Euler's constant. 
+
+
 \end{itemize}
 
 \end{itemize}
