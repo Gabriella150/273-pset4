@@ -234,3 +234,108 @@ p_ix[,1] <- 1-ones/total
 p_ix[,2] <- ones/total
 
 # simulation
+
+# simulation
+
+S = 1000
+gamma = 0
+
+# when i=0
+for (state in 0:30){
+        a = 0
+        for (s in 1:S){
+                x_prime = state + sample(c(0,1,2),1,replace = T, prob = c(theta_30,theta_31,theta_32))
+                i_prime = sample(c(0,1),1,replace=T,prob = c(p_ix[x_prime+1,1],p_ix[x_prime+1,2]))
+                a = (u(state,0) + beta*(u(x_prime,i_prime)+gamma-log(p_ix[x_prime+1,i_prime+1]))) + a
+        }
+        
+        V[state+1,1] = a/S
+}
+
+# when i=1
+for (state in 0:30){
+        b=0
+        for (s in 1:S){
+                # x_prime = 0 
+                i_prime = sample(c(0,1),1,replace=T,prob = c(p_ix[1,1],p_ix[1,2]))
+                b = (u(state,1) + beta*(u(0,i_prime)+gamma-log(p_ix[1,i_prime+1]))) + b
+        }
+        
+        V[state+1,2] = b/S
+}
+
+V
+p_ix
+
+# estimated choice probability
+p_ix_hat <- matrix(0,33,2)
+
+for (state in 0:30){
+        p_ix_hat[state+1,1] <- exp(V[state+1,1])/(exp(V[state+1,1])+exp(V[state+1,2]))
+        p_ix_hat[state+1,2] <- 1- p_ix_hat[state+1,1]
+}
+p_ix_hat
+
+p_ix <- p_ix[1:31,]
+p_ix_hat <- p_ix_hat[1:31,]
+
+p_ix
+p_ix_hat
+
+max(p_ix-p_ix_hat)
+
+# add in the outer loop
+theta_1_range <- seq(.01,.10,.01)
+beta_range <- seq(.90,.99,.01)
+RC_range <- seq(6,15,1)
+
+difference <- data.frame('theta_1'=rep(0),'beta'=rep(0),'RC'=rep(0),'difference'=rep(0))
+
+for (theta_1 in theta_1_range){
+        print (theta_1)
+        for (beta in beta_range){
+                for (RC in RC_range){
+                        
+                        V <- matrix(0,33,2)
+                        
+                        # when i=0
+for (state in 0:30){
+        a = 0
+        for (s in 1:S){
+                x_prime = state + sample(c(0,1,2),1,replace = T, prob = c(theta_30,theta_31,theta_32))
+                i_prime = sample(c(0,1),1,replace=T,prob = c(p_ix[x_prime+1,1],p_ix[x_prime+1,2]))
+                a = (u(state,0) + beta*(u(x_prime,i_prime)+gamma-log(p_ix[x_prime+1,i_prime+1]))) + a
+        }
+        
+        V[state+1,1] = a/S
+}
+
+# when i=1
+for (state in 0:30){
+        b=0
+        for (s in 1:S){
+                # x_prime = 0 
+                i_prime = sample(c(0,1),1,replace=T,prob = c(p_ix[1,1],p_ix[1,2]))
+                b = (u(state,1) + beta*(u(0,i_prime)+gamma-log(p_ix[1,i_prime+1]))) + b
+        }
+        
+        V[state+1,2] = b/S
+}
+
+                p_ix_hat <- matrix(0,33,2)
+
+for (state in 0:30){
+        p_ix_hat[state+1,1] <- exp(V[state+1,1])/(exp(V[state+1,1])+exp(V[state+1,2]))
+        p_ix_hat[state+1,2] <- 1- p_ix_hat[state+1,1]
+}
+
+difference <- rbind(difference,c(theta_1,beta,RC,max(abs(p_ix[1:31,]-p_ix_hat[1:31,]))))
+                        
+                        }
+                        
+        }
+}
+
+head(difference)
+difference <- difference[-1,]
+difference[which.min(difference[,4]),]
