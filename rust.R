@@ -102,7 +102,7 @@ df <- data.frame('x'=1:30,'EV0'=EV[2:31,1],'EV1'=EV[2:31,2])
 ggplot(aes(x,EV0),data=df) + theme_minimal()+geom_point()+geom_point(aes(x,EV1),color='red')+
         xlab('mileage')+ylab('EV')
 
-#plot(seq(1,201),data$EV[,1])
+plot(seq(1,201),data$EV[,1])
 
 #### nested fixed point with outer loop (over parameters)
 
@@ -209,31 +209,34 @@ likelihood[which.max(likelihood[,4]),]
 #### Hotz-Miller approach 
 
 # value matrix 
-V <- matrix(0,31,2)
+V <- matrix(0,33,2)
 
 # estiamted choice probabiity
-p_ix <- matrix(0,31,2)
+p_ix <- matrix(0,33,2)
 
 ones <- vector()
 total <- vector()
-a <- 0
-b <- 0
 
-for (s in 0:30){
+for (state in 0:32){
+        
+        a <- 0
+        b <- 0
+        
         for (bus in 1:100){
                 
-                a <- sum(i[which(x[,bus]==s),bus]) + a 
-                b <- length(i[which(x[,bus]==s),bus]) + b
+                a <- sum(i[which(x[,bus]==state),bus]) + a 
+                b <- length(i[which(x[,bus]==state),bus]) + b
         }
         
-        ones[s+1] <- a 
-        total[s+1] <- b
+        ones[state+1] <- a 
+        total[state+1] <- b
 }
+
+ones
+total
 
 p_ix[,1] <- 1-ones/total
 p_ix[,2] <- ones/total
-
-# simulation
 
 # simulation
 
