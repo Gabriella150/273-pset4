@@ -59,8 +59,8 @@
 \definecolor{highlight}{RGB}{248,248,248}
 
 
-\title{	
-\normalfont \normalsize 
+\title{
+\normalfont \normalsize
 \iffalse
 \textsc{Massachusetts Institute of Technology \\ Sloan School of Management, Spring 2016} \\ [25pt] % Your university, school and/or department name(s)
 \fi
@@ -79,7 +79,7 @@
 \item[1.] Model setup.\\
 
 Following the notations in Rust (1987), HZ's flow utility is:
-\[u(x_t,i_t,\theta_1)+\epsilon_t(i_t) = 
+\[u(x_t,i_t,\theta_1)+\epsilon_t(i_t) =
 \begin{cases}
 -RC-c(0,\theta_1)+\epsilon_t(1) & i_t = 1\\
 -c(x_t,\theta_1)+\epsilon_t(0) & i_t=0
@@ -95,7 +95,7 @@ HZ chooses $i_t$ in every period $t$ to maximize an infinite sum of discounted f
 
 Rewrite the value function as in the Bellman optimality form:
 \[V(x_t, \epsilon_t) = \text{max}_{i_t} \ (u(x_t,i_t,\theta_1)+\epsilon_t(i_t)) + \beta \mathbb{E}[V(x_{t+1},\epsilon_{t+1})|x_t, i_t]\]
-where the expectation is with respect to (conditional) state transition probability of both $x$ and $\epsilon$, see Rust (1987) equation (4.5). The Bellman equation breaks the dynamic optimization problem into an infinite series of static choices. 
+where the expectation is with respect to (conditional) state transition probability of both $x$ and $\epsilon$, see Rust (1987) equation (4.5). The Bellman equation breaks the dynamic optimization problem into an infinite series of static choices.
 
 
 \item[2.]
@@ -109,12 +109,12 @@ where the expectation is with respect to (conditional) state transition probabil
 \[V(x_t,\epsilon_t) = \text{max}\{\tilde{V}(x_t,\epsilon_t,1),\tilde{V}(x_t,\epsilon_t,0)\}\]
 HZ's decision is about trading off the total (future) cost of maintaining an old engine and the lump sum cost of replacing to a new one. The time to replace is the stopping time in this problem, so it can be thought as an optimal stopping time problem where the optimal policy is characterized by a cutoff in $x$, HZ would choose to replace the engine if $x$ is above that threshold (the threshold depends on realized value of $\epsilon$).
 
-\item[(2)] It's clear from 2 (1) that the optimal stopping rule is: 
+\item[(2)] It's clear from 2 (1) that the optimal stopping rule is:
 \begin{align*}
 &-RC-c(0,\theta_1)+\epsilon_t(1) + \beta \mathbb{E}[V(x_{t+1},\epsilon_{t+1})|x_t, i_t=1] >\\
 &-c(x_t,\theta_1)+\epsilon_t(0) + \beta \mathbb{E}[V(x_{t+1},\epsilon_{t+1})|x_t, i_t=0]
 \end{align*}
-or, 
+or,
 \[\tilde{V}(x_t,\epsilon_t,1) > \tilde{V}(x_t,\epsilon_t,0)\]
 therefore, because the errors are type I extreme value distributed:
 \[\mathbb{P}(i_t=1|x_t) = \frac{\text{exp}(u(x_t,1,\theta_1)+\beta \mathbb{E}[V_{t+1}|x_t, i_t=1])}{\sum_{k=\{0,1\}}\text{exp}(u(x_t,k,\theta_1)+\beta \mathbb{E}[V_{t+1}|x_t, i_t=k]}\tag{2.1}\]
@@ -124,8 +124,8 @@ where $u(x_t,i_t,\theta_1)$ is defined in 1 and for convenience:
 \item[(3)]
 For discrete $x$, under the assumption that the errors are type I extreme value distributed, we have (Rust (1987) equation (4.14)):
 \[EV(x,i) = \sum_y \text{log} \{\sum_{j} \text{exp}[u(y,j)+\beta EV(y,j)]\}\cdot p(y|x,i)\tag{2.2}\]
-where 
-\[EV(x,i) := \mathbb{E}[V_{t+1}|x_t,i_t]\] 
+where
+\[EV(x,i) := \mathbb{E}[V_{t+1}|x_t,i_t]\]
 and $x, i$ are the state and choice of current period and $y,j$ are the state and choice of the next period. Also note that here the transition probability does not depend on $x_t$ but only on $j$ (or $\Delta x$). To compute expected value function, we first need to estimate transition probability from the data, this can be done simply by counting:
 \[\hat{\theta}_{30} = \frac{\sum_{b}\sum_{t} 1_{\{x_{bt+1}-x_{bt}=0, i_{bt}=0\}}}{\sum_{b}\sum_{t} 1_{\{i_{bt}=0\}}}\]
 \[\hat{\theta}_{31} = \frac{\sum_{b}\sum_{t} 1_{\{x_{bt+1}-x_{bt}=1, i_{bt}=0\}}}{\sum_{b}\sum_{t} 1_{\{i_{bt}=0\}}}\]
@@ -143,9 +143,9 @@ The plot for $x=1-30$ at the true value of parameters are shown in Figure \ref{f
 	\begin{minipage}[b]{.46\linewidth}
 		\includegraphics[scale=.1]{ev_plot_rust.png}
 	\end{minipage}
-\caption{Expected Value Function for $i = 0$ and $i = 1$. Left panel shows results using iterative method, right panel shows provided Rust results.} 
+\caption{Expected Value Function for $i = 0$ and $i = 1$. Left panel shows results using iterative method, right panel shows provided Rust results.}
 \label{fig:ev_plot}
-\end{figure} 
+\end{figure}
 
 Interestingly, our EV results are linear in mileage, which is probably not expected. Despite a good amount of debugging, we have been unable to identify a problem. However, it's also unclear how our calculated results for \textit{just} 30 states should compare to the provided EV results, which provide information on 200 states. The first 30 states of the provided Rust EV estimates are decreasing in approximately linear fashion, suggesting our estimates might not be \textit{so} bad. However, the order of magnitude of our EV values (e.g., $10^{-1}$) is much smaller than the order of magnitude of EV values in the provided dataset (e.g., $\sim 70$), suggesting something is probably wrong. However, we don't have any more time to debug this, so we simply moved on.
 
@@ -156,7 +156,7 @@ The provided dataset contains mileage and engine replacement information for 100
 \begin{center}
 \begin{tabular}{r | r | r | r | r | r}
 \hline
-avg miles & max miles & min miles & s.d. miles & avg replace miles & avg replacements\\ 
+avg miles & max miles & min miles & s.d. miles & avg replace miles & avg replacements\\
 8.245 & 33.000 & 0.000 & 5.709 & 15.953 & 52.980 \\
 \hline
 \end{tabular}
@@ -199,8 +199,8 @@ The final, bottom right plot in \ref{fig:summary_statistics} also shows the empi
 where $b$ indexes for bus and $t$ indexes for time period. We compute a log likelihood for each combination of values for $(\theta_1, \beta, RC)$ and choose the set of parameters that maximizes the log-likelihood of the data. The maximum likelihood parameters obtained with the Rust method are:
 
 \begin{eqnarray*}
-\theta_1 & = 0.1 \\ 
-\beta & = 0.99 \\ 
+\theta_1 & = 0.1 \\
+\beta & = 0.99 \\
 RC & = 6
 \end{eqnarray*}
 
@@ -218,9 +218,7 @@ where $x^s_{t+1}$ is drawn from the transition probability $\hat{\theta}_{30}, \
 
 \item[(3)]
 
-In order to determine which engine HZ prefers, we simply need to look at HZ's value function for both engines at $t=0$ (which corresponds to $x_t = 0$ for all buses). There are a number of different mileage evolution paths that any given bus could take. However, the ex ante value function at time = 0 provides a weighted average of all of these scenarios. So at the outset, he will prefer whichever engine provides the most value in expectation.
-
-[paragraph with the results / which engine is preferred].
+In order to determine which engine HZ prefers, we simply need to look at HZ's value function for both engines at $t=0$ (which corresponds to $x_t = 0$ for all buses). There are a number of different mileage evolution paths that any given bus could take. However, the ex ante value function at time = 0 provides a weighted average of all of these scenarios. So at the outset, he will prefer whichever engine provides the most value in expectation. Given our estimation, HZ prefers the original engine over the new one.
 
 \item[(4)]
 
@@ -237,38 +235,39 @@ HZ's demand for engines as a function of the period, $t$ for a few values of RC 
 \begin{enumerate}
 \item Whatever our EV estimation issue, it is rearing its ugly head again and making these demand curves very similar.
 \item The increase in RC from engine 1 to engine 2 is almost perfectly offset by the decrease in $\theta_1$, creating two extremely similar demand curves.
-\end{enumerate} 
+\end{enumerate}
 
 \begin{figure}[ht!]
 \centering
 	\includegraphics[scale=.25]{per_period_demand_plot.png}
-\caption{The demand for engines across a fleet of 100 buses as a function of period (over the first 15 periods) for different values of RC. Unsurprisingly, when RC is lower, HZ is much more willing to change bus engines.} 
+\caption{The demand for engines across a fleet of 100 buses as a function of period (over the first 15 periods) for different values of RC. Unsurprisingly, when RC is lower, HZ is much more willing to change bus engines.}
 \label{fig:time_demand_rc}
-\end{figure} 
+\end{figure}
 
 \begin{figure}[ht!]
 \centering
 	\includegraphics[scale=.25]{aggregate_demand_plot.png}
-\caption{Aggregate per-period demand for new engines across a fleet of 100 buses as a function of RC. For engine 1, $\theta_1 = 0.09$. For engine 2, $\theta_1 = 0.02$.} 
+\caption{Aggregate per-period demand for new engines across a fleet of 100 buses as a function of RC. For engine 1, $\theta_1 = 0.09$. For engine 2, $\theta_1 = 0.02$.}
 \label{fig:agg_demand_rc}
-\end{figure} 
+\end{figure}
 
 \item[(5)]
 
-To determine the total value of the engines, assuming marginal cost $RC$, we can simply compute the total area to the right of a given $RC$ in a demand curve that looks like Figure \ref{fig:agg_demand_rc}. This area will give the total surplus that HZ gets from the engine in a given period.  In order to get a total value, we simply multiply this by the number of periods we want to consider. Mathematically, the total value is 
+To determine the total value of the engines, assuming marginal cost $RC$, we can simply compute the total area to the right of a given $RC$ in a demand curve that looks like Figure \ref{fig:agg_demand_rc}. This area will give the total surplus that HZ gets from the engine in a given period.  In order to get a total value, we simply multiply this by the number of periods we want to consider. Mathematically, it is socially optimal to produce the more efficient engine if the total value is greater than the total cost:
 
 \begin{equation}
-V_{engine}(RC) = n \times \int_{RC}^{\infty} D_{engine}(p) dp,
+V_{engine}(RC) - C(RC)= n \cdot \int_{RC}^{\infty} D_{engine}(p) dp - n\cdot RC \cdot D_{engine}(RC)- c > 0
 \end{equation}
 
-\noindent where $n$ is the number of periods and $D(p)$ is the amount of demand that HZ would have a given RC.
+\noindent where $n=15$ is the number of periods and $D(p)$ is the amount of demand that HZ would have a given RC and $c$ is the fixed R\&D cost.
 
-For engine 1, the total value is []. For engine 2, the total value is []. R\&D costs are essentially a fixed cost, so the maximum HZ should be willing to pay for the engine with $\theta_1 = 0.02$ is the difference in the total values of the two engines for a given value of RC. Given $RC = 20$ for the second engine and $RC = 6$ (our estimate) for the first engine, the maximum HZ would be willing to pay is [].
-
-\end{itemize}
+For engine 1, the total value is 343.3. For engine 2, the total value is 0 (because our estiamted demand is zero at $RC=20$).
 
 \end{itemize}
 
+\end{itemize}
+
+\newpage
 \section*{Appendix: Code}
 
 \mylisting[language=R]{./rust.R}
