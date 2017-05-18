@@ -92,13 +92,13 @@ value.Iterate <- function(EV){
     ## Update the EV value corresponding to not replacing the engine. There are three contributions here - one from the 
     ## j = 0 case, one from the j = 1 case, and one from the j = 2 case. Note the indexing here. When x =1, the state is 
     ## equal to 0 (this is the x that needs to be passed into u()), but we want to grab the EV corresponding to the 1st entry.
-    EV2[x,1] <- log(exp(u(x-1,0)+beta*EV[x,1])+exp(u(x-1,1)+beta*EV[x,2]))*theta_30  + gamma
-    + log(exp(u(x,0)+beta*EV[x+1,1])+exp(u(x,1)+beta*EV[x+1,2]))*theta_31  + gamma
-    + log(exp(u(x+1,0)+beta*EV[x+2,1])+exp(u(x+1,1)+beta*EV[x+2,2]))*theta_32 + gamma
+    EV2[x,1] <- log(exp(u(x-1,0)+beta*EV[x,1])+exp(u(x-1,1)+beta*EV[x,2]))*theta_30  +
+      log(exp(u(x,0)+beta*EV[x+1,1])+exp(u(x,1)+beta*EV[x+1,2]))*theta_31  + 
+      log(exp(u(x+1,0)+beta*EV[x+2,1])+exp(u(x+1,1)+beta*EV[x+2,2]))*theta_32 
     
     ## Update the EV value corresponding to replacing the engine. When the engine is replaced, x at the next period will
     ## deterministically reset to x = 0.
-    EV2[x,2] <- log(exp(u(0,0)+beta*EV[1,1])+exp(u(0,1)+beta*EV[1,2])) + gamma
+    EV2[x,2] <- log(exp(u(0,0)+beta*EV[1,1])+exp(u(0,1)+beta*EV[1,2])) 
   }
   
   ## Return the updated EV values.
@@ -110,8 +110,8 @@ value.Iterate <- function(EV){
 cri <- 10^(-8)
 
 ### Set an initial value for the EV matrix (all 0s, EV), and another EV object to hold the updated estimates, EV2.
-EV <- matrix(100,33,2)
-EV2 <- matrix(0,33,2)
+EV <- matrix(0,33,2)
+EV2 <- matrix(-80,33,2)
 
 ## While the infinity norm is less than the threshold, iterate
 while(max(abs(EV-EV2))>cri){
@@ -313,8 +313,8 @@ for (theta_1 in theta_1_range) {
       print(paste(c(theta_1, beta, RC), collapse=' '))
       
       ### Initialize the EV functions to the initial values we used above.
-      EV <- matrix(100,33,2)
-      EV2 <- matrix(0,33,2)
+      EV <- matrix(0,33,2)
+      EV2 <- matrix(-80,33,2)
       
       ### Iteratively compute the EV values.
       while(max(abs(EV-EV2))>cri){
