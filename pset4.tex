@@ -107,16 +107,57 @@ and $x, i$ are the state and choice of current period and $y,j$ are the state an
 we compute the expected value function in the inner loop of the nested fixed point algorithm (holding the value of $\theta$ fixed), we first guess the initial values of $EV(x,i)$ for all possible values of $x,i$ and use the equation (2.2) to iterate expected value function until it converges. The criterion is:
 \[\text{max}_{x,i}|EV^{T+1}(x,i)-EV^T(x,i)|<\eta\]
 
-The plot for $x=1-30$ at the true value of parameters are shown below:
+The plot for $x=1-30$ at the true value of parameters are shown in Figure \ref{fig:ev_plot}.
 
 \begin{figure}[ht!]
 \centering
-\includegraphics[scale=.6]{EV.png}
-\caption{Expected Value Function (black for $i=0$ and red for $i=1$)} 
+	\begin{minipage}[b]{.46\linewidth}
+		\includegraphics[scale=.1]{ev_plot.png}
+	\end{minipage}
+	\begin{minipage}[b]{.46\linewidth}
+		\includegraphics[scale=.1]{ev_plot_rust.png}
+	\end{minipage}
+\caption{Expected Value Function for $i = 0$ and $i = 1$. Left panel shows results using iterative method, right panel shows provided Rust results.} 
+\label{fig:ev_plot}
 \end{figure} 
 
+Interestingly, our EV results are linear in mileage, which is probably not expected. Despite a good amount of debugging, we have been unable to identify a problem. However, it's also unclear how our calculated results for \textit{just} 30 states should compare to the provided EV results, which provide information on 200 states. The first 30 states of the provided Rust EV estimates are decreasing in approximately linear fashion, suggesting our estimates might not be \textit{so} bad. However, the order of magnitude of our EV values (e.g., $10^{-1}$) is much smaller than the order of magnitude of EV values in the provided dataset (e.g., $\sim 70$), suggesting something is probably wrong. However, we don't have any more time to debug this, so we simply moved on.
+
 \item[(4)]
-Summary statistics.
+
+The provided dataset contains mileage and engine replacement information for 100 buses over 1,000 periods. The table below shows the mean mileage, maximum mileage, minimum mileage, standard deviation of the mileage, the average mileage at engine replacement across all buses and periods, and the average number of engine replacements for a particular bus over the 1,000 periods.
+
+\begin{center}
+\begin{tabular}{r | r | r | r | r | r}
+\hline
+avg miles & max miles & min miles & s.d. miles & avg replace miles & avg replacements\\ 
+8.245 & 33.000 & 0.000 & 5.709 & 15.953 & 52.980 \\
+\hline
+\end{tabular}
+\end{center}
+
+We might also be interested in understanding how each of these summary statistics vary across buses. For instance, maybe some buses have their engines replaced much more often. In order to study this, Figure \ref{fig:summary_statistics} shows the distributions of average mileage, maximum mileage, s.d. mileage, avg miles at replacement, and number of replacements across the 100 buses in the sample. In general, these distributions are quite concentrated, suggesting that there are not systematic differences across buses.
+
+\begin{figure}
+	\centering
+	\begin{minipage}[b]{.48\linewidth}
+		\includegraphics[scale=.15]{mean_mileage_plot.png}
+	\end{minipage}
+	\begin{minipage}[b]{.48\linewidth}
+		\includegraphics[scale=.15]{max_mileage_plot.png}
+	\end{minipage}
+	\begin{minipage}[b]{.48\linewidth}
+	\includegraphics[scale=.15]{sd_mileage_plot.png}
+	\end{minipage}
+	\begin{minipage}[b]{.48\linewidth}
+	\includegraphics[scale=.15]{time_to_engine_replacement_plot.png}
+	\end{minipage}
+		\begin{minipage}[b]{.48\linewidth}
+	\includegraphics[scale=.15]{replacements_plot.png}
+	\end{minipage}
+	\caption{Distribution of various summary statistics across buses.}
+	\label{fig:summary_statistics}
+\end{figure}
 
 \end{itemize}
 

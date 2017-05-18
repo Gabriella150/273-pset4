@@ -157,6 +157,12 @@ mean_engine_replacement_age <- mean(x[i == 1])
 max_x <- max(x)
 min_x <- min(x)
 sd_x <- sd(x)
+avg_replacements <- mean(apply(i, 2, function(x) {sum(x)}))
+
+aggregate_stats <- c(mean_x, max_x, min_x, sd_x, mean_engine_)
+aggregate_stats %>% 
+  round(., 3) %>%
+  kable(., format='latex')
 
 ### Calculate the per bus mean mileage, mean time to engine replacement, max mileage, min mileage, and sd mileage
 mean_x_per_bus <- apply(x, 2, function(x) {mean(x)})
@@ -164,6 +170,8 @@ max_x_per_bus <- apply(x, 2, function(x) {max(x)})
 min_x_per_bus <- apply(x, 2, function(x) {min(x)})
 sd_x_per_bus <- apply(x, 2, function(x) {sd(x)})
 mean_engine_replacement_per_bus <- apply(x*i, 2, function(x) {sum(x)/sum(x != 0)})
+replacements <- apply(i, 2, function(x) {sum(x)})
+
 
 ### Collate per bus information into a dataframe
 per_bus_statistics <- data.frame(bus = seq(1, 100, 1),
@@ -171,25 +179,37 @@ per_bus_statistics <- data.frame(bus = seq(1, 100, 1),
                                     max_x_per_bus = max_x_per_bus,
                                     min_x_per_bus = min_x_per_bus,
                                     sd_x_per_bus = sd_x_per_bus,
-                                    mean_engine_replacement_per_bus = mean_engine_replacement_per_bus)
+                                    mean_engine_replacement_per_bus = mean_engine_replacement_per_bus,
+                                 replacements = replacements)
 
 ### Create some plots
 mean_mileage_plot <- ggplot(per_bus_statistics, aes(x=mean_x_per_bus)) + geom_histogram() + 
   xlab('Mean Mileage (buckets of 5,000 miles)') + ylab('Number of buses') + ggtitle('Mean mileage across buses') + 
   theme(plot.title = element_text(hjust = 0.5))
+ggsave(mean_mileage_plot, file='mean_mileage_plot.png', height=4, width=4, units='in')
+
 max_mileage_plot <- ggplot(per_bus_statistics, aes(x=max_x_per_bus)) + geom_histogram() + 
   xlab('Max Mileage (buckets of 5,000 miles)') + ylab('Number of buses') + ggtitle('Max mileage across buses') + 
   theme(plot.title = element_text(hjust = 0.5))
+ggsave(max_mileage_plot, file='max_mileage_plot.png', height=4, width=4, units='in')
+
 sd_mileage_plot <- ggplot(per_bus_statistics, aes(x=sd_x_per_bus)) + geom_histogram() + 
   xlab('Mileage Standard Deviation (buckets of 5,000 miles)') + ylab('Number of buses') + 
   ggtitle('Mileage standard deviation across buses') + 
   theme(plot.title = element_text(hjust = 0.5))
+ggsave(sd_mileage_plot, file='sd_mileage_plot.png', height=4, width=4, units='in')
+
 time_to_engine_replacement_plot <- ggplot(per_bus_statistics, aes(x=mean_engine_replacement_per_bus)) + geom_histogram() + 
   xlab('Mean Engine Replacement Mileage (buckets of 5,000 miles)') + ylab('Number of buses') + 
   ggtitle('Mean engine replacement mileage across buses') + 
   theme(plot.title = element_text(hjust = 0.5)) 
+ggsave(time_to_engine_replacement_plot, file='time_to_engine_replacement_plot.png', height=4, width=4, units='in')
 
-
+replacements_plot <- ggplot(per_bus_statistics, aes(x=replacements)) + geom_histogram() + 
+  xlab('Number of engine replacements') + ylab('Number of buses') + 
+  ggtitle('Number of engine replacements across buses') + 
+  theme(plot.title = element_text(hjust = 0.5)) 
+ggsave(replacements_plot, file='replacements_plot.png', height=4, width=4, units='in')
 
 
 ################
