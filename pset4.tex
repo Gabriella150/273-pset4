@@ -164,6 +164,8 @@ avg miles & max miles & min miles & s.d. miles & avg replace miles & avg replace
 
 We might also be interested in understanding how each of these summary statistics vary across buses. For instance, maybe some buses have their engines replaced much more often. In order to study this, Figure \ref{fig:summary_statistics} shows the distributions of average mileage, maximum mileage, s.d. mileage, avg miles at replacement, and number of replacements across the 100 buses in the sample. In general, these distributions are quite concentrated, suggesting that there are not systematic differences across buses.
 
+The final, bottom right plot in \ref{fig:summary_statistics} also shows the empirically observed conditional choice probability as a function of state (mileage) that Harold Zurcher actually acts on. At a high level, Zurcher's has to make the investment decision of when to replace a given bus's engine. The mean replacement mileage plot suggests that on average he replaces a bus's engine after about 80,000 miles. The conditional choice probability plot suggests that the likelihood he increases the engine is practically zero until the bus hits 50,000 miles, after which the probability that the bus has its engine replaced climbs quickly. By the time a bus has 150,000 miles on it, it has a 50\% probability of having its engine changed in a given time period.
+
 \begin{figure}
 	\centering
 	\begin{minipage}[b]{.48\linewidth}
@@ -181,7 +183,10 @@ We might also be interested in understanding how each of these summary statistic
 		\begin{minipage}[b]{.48\linewidth}
 	\includegraphics[scale=.15]{replacements_plot.png}
 	\end{minipage}
-	\caption{Distribution of various summary statistics across buses.}
+	\begin{minipage}[b]{.48\linewidth}
+	\includegraphics[scale=.15]{ccp_plot.png}
+	\end{minipage}
+	\caption{Distribution of various summary statistics across buses, as well as the empirical conditional choice probability for Zurcher.}
 	\label{fig:summary_statistics}
 \end{figure}
 
@@ -191,7 +196,13 @@ We might also be interested in understanding how each of these summary statistic
 \begin{itemize}
 \item[(1)] In the outer loop we search over a grid of values for $(\theta_1, \beta, RC)$, and compute the log likelihood function:
 \[\text{log}L = \sum_{b} \{\sum_{t} \text{log} \mathbb{P}(i_{bt}|x_{bt}) + \sum_t \text{log} \mathbb{P}(x_{bt}|x_{bt-1},i_{t-1})\}\]
-where $b$ indexes for bus and $t$ indexes for time period. We compute a log likelihood for each combination of values for $(\theta_1, \beta, RC)$ and choose the one that has the maximal value as our maximum likelihood estimation.
+where $b$ indexes for bus and $t$ indexes for time period. We compute a log likelihood for each combination of values for $(\theta_1, \beta, RC)$ and choose the set of parameters that maximizes the log-likelihood of the data. The maximum likelihood parameters obtained with the Rust method are:
+
+\begin{eqnarray*}
+\theta_1 & = 0.1 \\ 
+\beta & = 0.99 \\ 
+RC & = 6
+\end{eqnarray*}
 
 \item[(2)] In Hotz-Miller's approach, we will estimate the choice specific value function (as opposed to the expected value function as in Rust). We start by noting that conditional choice probability is observed directly from the data:
 \[\hat{\mathbb{P}}(i=1|x) = \frac{\sum_{b}\sum_{t} 1_{\{i_{bt}=1, x_{bt}=x\}}}{\sum_{b}\sum_{t} 1_{\{x_{bt}=x\}}}\]
@@ -203,8 +214,42 @@ For simplicity, in the code we use one-period forward simulation where:
 \[\tilde{V}(x_t,i_t) = u(x_t,i_t)+\beta\mathbb{E}_{x_{t+1}}[\mathbb{E}_{i_{t+1}}[\mathbb{E}_{\epsilon_{t+1}}[u(x_{t+1},i_{t+1})+\epsilon_{t+1}|i_{t+1},x_{t+1}]|x_{t+1}]|x_t,i_t]\]
 it is estimated as:
 \[\hat{\tilde{V}}(x_t,i_t) = \frac{1}{S} \sum_{s} [u(x_t,i_t)+\beta[u(x^s_{t+1},i^s_{t+1})+\gamma -\text{log}(\hat{\mathbb{P}}(i^s_{t+1}|x^s_{t+1}))]]\]
-where $x^s_{t+1}$ is drawn from the transition probability $\hat{\theta}_{30}, \hat{\theta}_{31}, \hat{\theta}_{32}$, and $i^s_{t+1}$ is drawn from $\hat{\mathbb{P}}(i|x)$, $\gamma$ is the Euler's constant. 
+where $x^s_{t+1}$ is drawn from the transition probability $\hat{\theta}_{30}, \hat{\theta}_{31}, \hat{\theta}_{32}$, and $i^s_{t+1}$ is drawn from $\hat{\mathbb{P}}(i|x)$, $\gamma$ is the Euler's constant. We only go one period forward because we only observe data for states up to $x_t = 33$. It is possible for larger $T$ that we would encounter a state that is not in our dataset. When this occurs, its unclear what value should be used as the conditional choice probability. While we avoid this issue by setting $T = 2$, this does reduce the precision of our estimates.
 
+\item[(3)]
+
+\item[(4)]
+
+We want to compute HZ's demand function for the two buses, which we will denote as engine 1 ($\theta_1 = 0.09, RC = 6$) and engine 2 ($\theta_1 = 0.02, RC = 20$) as a function of RC. In order to do so, we obtain conditional choice probability estimates, $\hat{\mathbb{P}}(i = 1 | x)$ by using the Rust method to iterate EV values. We use the Rust methodology because the Hotz and Miller methodology depends on the observed conditional choice probabilities, which we know do \textit{not} correspond to the counterfactual engine 2.
+
+With those conditional choice probability estimates for the two engines in hand, we run 1,000 simulations of a bus's state transitions (and HZ's corresponding engine replacement decisions) over the first 15 periods. This allows us to get an expected, per-bus demand for engines over the first 15 periods. In order to get the expected demand that HZ has for engines across all buses, we simply multiply this figure by 100. So the expected demand (as a function of period $t$) is:
+
+\begin{equation}
+D(t) = 100 \times \sum_{x_t} \hat{\mathbb{P}}(i = 1 | x = x_t) \hat{\mathbb{P}}(x = x_t | t)
+\end{equation}
+
+HZ's demand for engines as a function of the period, $t$ for a few values of RC can be found in Figure \ref{fig:time_demand_rc}. The average per-period demand for the two engines (averaged across 15 periods) for different values of RC can be found in Figure \ref{fig:agg_demand_rc}. it's worth noting that the demand curves for the two engines appear almost identical - although you cannot distinguish them in the figure, there are small differences (on the order of a tenths of an engine. This could be a true difference, or it could be simulation error. Although we're not sure why these demand curves are so similar, we have two hypotheses:
+
+\begin{enumerate}
+\item Whatever our EV estimation issue, it is rearing its ugly head again and making these demand curves very similar.
+\item The increase in RC from engine 1 to engine 2 is almost perfectly offset by the decrease in $\theta_1$, creating two extremely similar demand curves.
+\end{enumerate} 
+
+\begin{figure}[ht!]
+\centering
+	\includegraphics[scale=.25]{per_period_demand_plot.png}
+\caption{The demand for engines across a fleet of 100 buses as a function of period (over the first 15 periods) for different values of RC. Unsurprisingly, when RC is lower, HZ is much more willing to change bus engines.} 
+\label{fig:time_demand_rc}
+\end{figure} 
+
+\begin{figure}[ht!]
+\centering
+	\includegraphics[scale=.25]{aggregate_demand_plot.png}
+\caption{Aggregate per-period demand for new engines across a fleet of 100 buses as a function of RC. For engine 1, $\theta_1 = 0.09$. For engine 2, $\theta_1 = 0.02$.} 
+\label{fig:agg_demand_rc}
+\end{figure} 
+
+\item[(5)]
 
 \end{itemize}
 

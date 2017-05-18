@@ -9,6 +9,7 @@ library(dplyr)
 ## Read in data
 setwd('~/Dropbox (MIT)/MIT/Spring_2017/14.273/HW4/273-pset4/')
 data <- readMat('../rust.mat')
+gamma = .577
 
 ## Extract bus replacement events
 i <- data$it
@@ -91,13 +92,13 @@ value.Iterate <- function(EV){
     ## Update the EV value corresponding to not replacing the engine. There are three contributions here - one from the 
     ## j = 0 case, one from the j = 1 case, and one from the j = 2 case. Note the indexing here. When x =1, the state is 
     ## equal to 0 (this is the x that needs to be passed into u()), but we want to grab the EV corresponding to the 1st entry.
-    EV2[x,1] <- log(exp(u(x-1,0)+beta*EV[x,1])+exp(u(x-1,1)+beta*EV[x,2]))*theta_30 
-    + log(exp(u(x,0)+beta*EV[x+1,1])+exp(u(x,1)+beta*EV[x+1,2]))*theta_31
-    + log(exp(u(x+1,0)+beta*EV[x+2,1])+exp(u(x+1,1)+beta*EV[x+2,2]))*theta_32 
+    EV2[x,1] <- log(exp(u(x-1,0)+beta*EV[x,1])+exp(u(x-1,1)+beta*EV[x,2]))*theta_30  + gamma
+    + log(exp(u(x,0)+beta*EV[x+1,1])+exp(u(x,1)+beta*EV[x+1,2]))*theta_31  + gamma
+    + log(exp(u(x+1,0)+beta*EV[x+2,1])+exp(u(x+1,1)+beta*EV[x+2,2]))*theta_32 + gamma
     
     ## Update the EV value corresponding to replacing the engine. When the engine is replaced, x at the next period will
     ## deterministically reset to x = 0.
-    EV2[x,2] <- log(exp(u(0,0)+beta*EV[1,1])+exp(u(0,1)+beta*EV[1,2]))
+    EV2[x,2] <- log(exp(u(0,0)+beta*EV[1,1])+exp(u(0,1)+beta*EV[1,2])) + gamma
   }
   
   ## Return the updated EV values.
@@ -404,6 +405,16 @@ for (state in 0:32){
 p_ix[,1] <- 1-ones/total
 p_ix[,2] <- ones/total
 
+### Plot conditional choice probabilities
+p_ix_df <- as.data.frame(p_ix)
+p_ix_df$state <- as.numeric(rownames(p_ix_df))
+names(p_ix_df) <- c('P(i = 0)', 'P(i = 1)', 'State')
+ccp_plot <- p_ix_df %>% 
+  ggplot(., aes(x=State, y=`P(i = 1)`)) + geom_line() + 
+  ggtitle('Conditional probability of engine replacement \n as a function of mileage') + 
+  theme(plot.title = element_text(hjust = 0.5))
+ggsave(ccp_plot, file='ccp_plot.png', height=4, width=4, units='in')
+
 ### The function below uses the Hotz and Miller method to estimate V and p_ix_hat for every state and period
 ### given a set of model parameters (beta, theta_1, and RC).
 approximate.V_pixhat <- function() { 
@@ -458,7 +469,6 @@ approximate.V_pixhat <- function() {
 ### beta_range: The range of beta_values to test
 ### RC_range: The range of RC values to test
 S = 1000
-gamma = .577
 theta_1_range <- seq(.01,.10,.01)
 beta_range <- seq(.90,.99,.01)
 RC_range <- seq(6,15,1)
@@ -664,17 +674,20 @@ for (j in RC_range) {
 ### For a reduced set of RCs, see the period-by-period demand
 per_period_demand_plot <- estimated_demand_df %>% 
   filter(RC %in% c(1, 3, 5, 7, 10)) %>%
-ggplot(., aes(x=time_period, y=demand, color=as.factor(RC))) + geom_line() + 
-  facet_wrap(~engine)
-ggsave(per_period_demand_plot, file='per_period_demand_plot.png', height=4, width=4, units='in')
+  mutate(RC = as.factor(RC))  %>% 
+ggplot(., aes(x=time_period, y=demand, color=RC)) + geom_line() + 
+  facet_wrap(~engine) + xlab('Period') + ylab('Demand for Engines') + ggtitle('Demand for engines over time') + 
+  theme(plot.title = element_text(hjust = 0.5))
+ggsave(per_period_demand_plot, file='per_period_demand_plot.png', height=4, width=6, units='in')
 
 ### Aggregate over periods to get demand as a function of RC for different thetas.
 aggregate_demand_plot <- estimated_demand_df %>% 
   group_by(RC, engine) %>% 
-  summarise(total_demand = sum(demand)) %>% 
-  ungroup() %>% 
-  ggplot(., aes(x=RC, y=total_demand, color=engine)) + geom_line()
-ggsave(aggregate_demand_plot, file='aggregate_demand_plot.png', height=4, width=4, units='in')
+  summarise(total_demand = sum(demand)/n_periods) %>% 
+  ungroup() %>% head()
+  ggplot(., aes(x=RC, y=total_demand, color=engine)) + geom_line() + xlab('RC') + 
+  ylab('Average per-period demand') + ggtitle('Average per-period engine demand for 100 buses') + 
+ggsave(aggregate_demand_plot, file='aggregate_demand_plot.png', height=4, width=6, units='in')
 
 
 ################
