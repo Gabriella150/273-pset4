@@ -662,17 +662,19 @@ for (j in RC_range) {
 }
 
 ### For a reduced set of RCs, see the period-by-period demand
-estimated_demand_df %>% 
+per_period_demand_plot <- estimated_demand_df %>% 
   filter(RC %in% c(1, 3, 5, 7, 10)) %>%
 ggplot(., aes(x=time_period, y=demand, color=as.factor(RC))) + geom_line() + 
   facet_wrap(~engine)
+ggsave(per_period_demand_plot, file='per_period_demand_plot.png', height=4, width=4, units='in')
 
 ### Aggregate over periods to get demand as a function of RC for different thetas.
-estimated_demand_df %>% 
+aggregate_demand_plot <- estimated_demand_df %>% 
   group_by(RC, engine) %>% 
-  summarise(total_demand = sum(demand)) %>%
+  summarise(total_demand = sum(demand)) %>% 
   ungroup() %>% 
   ggplot(., aes(x=RC, y=total_demand, color=engine)) + geom_line()
+ggsave(aggregate_demand_plot, file='aggregate_demand_plot.png', height=4, width=4, units='in')
 
 
 ################
