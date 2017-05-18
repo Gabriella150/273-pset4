@@ -4,6 +4,7 @@
 ## Import libraries
 library(R.matlab)
 library(ggplot2)
+library(dplyr)
 
 ## Read in data
 setwd('~/Dropbox (MIT)/MIT/Spring_2017/14.273/HW4/273-pset4/')
@@ -286,6 +287,7 @@ for (theta_1 in theta_1_range) {
   for (beta in beta_range) {
     ### Loop through RC
     for (RC in RC_range) {
+      print(paste(c(theta_1, beta, RC), collapse=' '))
       
       ### Initialize the EV functions to the initial values we used above.
       EV <- matrix(100,33,2)
@@ -312,7 +314,29 @@ for (theta_1 in theta_1_range) {
 
 ### Retrieve the row in the likelihood dataframe corresponding to the maximum likelihood estimate
 likelihood <- likelihood[-1,]
-likelihood[which.max(likelihood[,4]),]
+parameter_estimates <- likelihood[which.max(likelihood[,4]),]
+  
+### Use these parameters and get the relevant estimate of EV and p_i
+theta_1 = parameter_estimates$theta_1
+beta = parameter_estimates$beta
+RC = parameter_estimates$RC
+
+EV <- matrix(100,33,2)
+EV2 <- matrix(0,33,2)
+### Iteratively compute the EV values.
+while(max(abs(EV-EV2))>cri){
+  EV <- EV2
+  EV2 <- value.Iterate(EV)
+}
+EV <- EV2
+EV <- EV[1:31,]
+### Given these values of EV, calculated the choice probabilities
+p_i <- choice.prob.Estimate()
+### Given the EV values, the choice probabilities and the parameters, calculate
+### the log-likelihood of the data.
+likelihood <- rbind(likelihood,c(theta_1,beta,RC,log.likelihood.Compute()))
+
+save(EV, p_i, likelihood, parameter_estimates, file='rust_estimate.Rdata')
 
 ################
 # Question 3.2 #
@@ -358,6 +382,53 @@ for (state in 0:32){
 p_ix[,1] <- 1-ones/total
 p_ix[,2] <- ones/total
 
+### The function below uses the Hotz and Miller method to estimate V and p_ix_hat for every state and period
+### given a set of model parameters (beta, theta_1, and RC).
+approximate.V_pixhat <- function() { 
+  ### Initialize an empty valuation matrix
+  V <- matrix(0,33,2)
+  ### Initialize an empty conditional choice probability matrix
+  p_ix_hat <- matrix(0,33,2)
+  
+  ### Iterate through the states
+  for (state in 0:30){
+    ### Initialize a and b, which will basically track a running total of V for different choices over simulations, to 0.
+    a = 0
+    b = 0 
+    ### Iterate through the simulations. Note that ideal we would probably want to go more than one time step into the 
+    ### future. However, because of the limitations in our dataset, we only go one time step forward. This is mainly because
+    ### it's unclear how we would draw i (the choice) for states that do not appear in our data (i.e., x = 34).
+    for (s in 1:S){
+      ## Conditional on choosing i = 0, simulate the next state that a given bus will end up in by drawing from the 
+      ## transition probabilities.
+      x_prime_0 = state + sample(c(0,1,2),1,replace = T, prob = c(theta_30,theta_31,theta_32))
+      ## Conditional on choosing i = 0 and ending up in some state in the next time period, randomly simulate a draw from 
+      ## i based on the conditional choice probabilities
+      i_prime_0 = sample(c(0,1),1,replace=T,prob = c(p_ix[x_prime_0+1,1],p_ix[x_prime_0+1,2]))
+      # Figure out the expected utility from this truncated sequence of choices.
+      a = (u(state,0) + beta*(u(x_prime_0,i_prime_0)+gamma-log(p_ix[x_prime_0+1,i_prime_0+1]))) + a
+      
+      ## Conditional on choosing i = 1, we don't need to simulate the next state that a bus will end up in. It will always
+      ## be x = 0. So we jump right to simulating the draw from i for x = 0.
+      i_prime_1 = sample(c(0,1),1,replace=T,prob = c(p_ix[1,1],p_ix[1,2]))
+      ## Figure out the expected utility from this truncated sequence of choices.
+      b = (u(state,1) + beta*(u(0,i_prime_1)+gamma-log(p_ix[1,i_prime_1+1]))) + b
+    }
+    
+    ## Set the value of V to be the average over all S of our simulations for both the i = 0 and i = 1 choices.
+    V[state+1,1] = a/S
+    V[state+1,2] = b/S
+    ## Use the multinomial logit-esque probability expression to figure out the probability of choosing i = 0 or i = 1 
+    ## given that the bus is in state x.
+    p_ix_hat[state+1,1] <- exp(V[state+1,1])/(exp(V[state+1,1])+exp(V[state+1,2]))
+    p_ix_hat[state+1,2] <- 1- p_ix_hat[state+1,1]
+  }
+  
+  # Put final output into a list and return it
+  results <- list('V' = V, 'p_ix_hat' = p_ix_hat)
+  return(results)
+}
+
 ### Specify a number of constants that will be used in the Hotz and Miller algorithm:
 ### S: The number of "simulations" to do per state / decision
 ### gamma: This should be Euler's constant
@@ -380,45 +451,13 @@ for (theta_1 in theta_1_range) {
   for (beta in beta_range) {
     ### Loop through RC
     for (RC in RC_range) {
+      # Check progress
+      print(paste(c(theta_1, beta, RC), collapse=' '))
       
-      ### Initialize an empty valuation matrix
-      V <- matrix(0,33,2)
-      ### Initialize an empty conditional choice probability matrix
-      p_ix_hat <- matrix(0,33,2)
-      
-      ### Iterate through the states
-      for (state in 0:30){
-        ### Initialize a and b, which will basically track a running total of V for different choices over simulations, to 0.
-        a = 0
-        b = 0 
-        ### Iterate through the simulations. Note that ideal we would probably want to go more than one time step into the 
-        ### future. However, because of the limitations in our dataset, we only go one time step forward. This is mainly because
-        ### it's unclear how we would draw i (the choice) for states that do not appear in our data (i.e., x = 34).
-        for (s in 1:S){
-          ## Conditional on choosing i = 0, simulate the next state that a given bus will end up in by drawing from the 
-          ## transition probabilities.
-          x_prime_0 = state + sample(c(0,1,2),1,replace = T, prob = c(theta_30,theta_31,theta_32))
-          ## Conditional on choosing i = 0 and ending up in some state in the next time period, randomly simulate a draw from 
-          ## i based on the conditional choice probabilities
-          i_prime_0 = sample(c(0,1),1,replace=T,prob = c(p_ix[x_prime_0+1,1],p_ix[x_prime_0+1,2]))
-          # Figure out the expected utility from this truncated sequence of choices.
-          a = (u(state,0) + beta*(u(x_prime_0,i_prime_0)+gamma-log(p_ix[x_prime_0+1,i_prime_0+1]))) + a
-          
-          ## Conditional on choosing i = 1, we don't need to simulate the next state that a bus will end up in. It will always
-          ## be x = 0. So we jump right to simulating the draw from i for x = 0.
-          i_prime_1 = sample(c(0,1),1,replace=T,prob = c(p_ix[1,1],p_ix[1,2]))
-          ## Figure out the expected utility from this truncated sequence of choices.
-          b = (u(state,1) + beta*(u(0,i_prime_1)+gamma-log(p_ix[1,i_prime_1+1]))) + b
-        }
-        
-        ## Set the value of V to be the average over all S of our simulations for both the i = 0 and i = 1 choices.
-        V[state+1,1] = a/S
-        V[state+1,2] = b/S
-        ## Use the multinomial logit-esque probability expression to figure out the probability of choosing i = 0 or i = 1 
-        ## given that the bus is in state x.
-        p_ix_hat[state+1,1] <- exp(V[state+1,1])/(exp(V[state+1,1])+exp(V[state+1,2]))
-        p_ix_hat[state+1,2] <- 1- p_ix_hat[state+1,1]
-      }
+      ### Get estimates of V and P_ix_hat using the Hotz and Miller method
+      v_and_p_ix_hat <- approximate.V_pixhat()
+      V = v_and_p_ix_hat$V
+      p_ix_hat <- v_and_p_ix_hat$p_ix_hat
       
       ### Now that we have a full conditional choice probability matrix, calculate the infinity norm (i.e., largest 
       ### absolute difference between the empirical conditional choice probabilities and those estimated with the 
@@ -430,7 +469,17 @@ for (theta_1 in theta_1_range) {
 
 ### Find the set of parameters that minimizes this difference
 difference <- difference[-1,]
-difference[which.min(difference[,4]),]
+parameter_estimates <- difference[which.min(difference[,4]),]
+
+### Use these parameters and get the relevant estimate of V and p_ix_hat
+theta_1 = parameter_estimates$theta_1
+beta = parameter_estimates$beta
+RC = parameter_estimates$RC
+best_guesses <- approximate.V_pixhat()
+V <- best_guesses$V
+p_ix_hat <- best_guesses$p_ix_hat
+
+save(V, p_ix_hat, difference, parameter_estimates, file='hotz_and_miller_estimate.Rdata')
 
 ################
 # Question 3.3 #
@@ -442,6 +491,166 @@ difference[which.min(difference[,4]),]
 # Question 3.4 #
 ################
 
+### This function simulates, for one agent, a sequence of state transitions and also engine replacement decisions
+simulate_sequence <- function(n_periods) {
+  ### Initialize empty vectors to hold states and engine replacement transitions
+  x_values <- rep(0, n_periods)
+  i_values <- rep(0, n_periods)
+  ### Every bus starts at state 0
+  x_values[1] <- 0
+  ### Go through the progression
+  for (j in 1:length(x_values)) {
+    ### Make a decision based on current state
+    i_values[j] = sample(c(0,1),1,replace=T,prob = c(p_ix_hat[x_values[j] + 1,1],p_ix_hat[x_values[j] + 1,2]))
+    ### If decision is to not replace, continue on and increment x randomly
+    if (i_values[j] == 0) { 
+      x_values[j+1] = x_values[j] + sample(c(0,1,2),1,replace = T, prob = c(theta_30,theta_31,theta_32))
+    ### If decision is to replace, reset state to 0
+    } else {
+      x_values[j+1] = 0
+    }
+  }
+  ## Generate a decision for the last period, even though we never see the fruits of that decision
+  i_values[length(i_values)] = sample(c(0,1),1,replace=T,prob = c(p_ix_hat[x_values[length(x_values)] + 1,1],
+                                                                  p_ix_hat[x_values[length(x_values)] + 1,2]))
+  ### Return the states and replacement decisions in a list
+  results <- list('x_values' = x_values, 'i_values' = i_values)
+  return(results)
+}
+
+### Given a set of parameters, this function generates period-by-period demand estimates for new buses (e.g., 
+### how many buses will get their engine replaced in each period)
+estimate_demand <- function(n_sims, n_buses, n_periods) { 
+  
+  ### Initialize a vector to hold simulated demand
+  simulated_demand_total <- rep(0, n_periods)
+  
+  ### Run a bunch of simulations and simulate engine replacement decisions
+  for (j in 1:n_sims) { 
+    simulated_demand_total = simulated_demand_total + simulate_sequence(n_periods)$i_values
+  }
+
+  ### Divide by the number of sims to get averages, multiply by number of buses (this works because 
+  ###buses are independent). Then return what we get.
+  return((n_buses/n_sims)*simulated_demand_total)
+}
+
+### Get demand as a function of RC for the first bus 
+
+## Specify the range of RCs, as well as constants.
+RC_range = seq(0, 15, .25)
+n_periods = 15
+n_sims = 1000
+n_buses = 100
+load('hotz_and_miller_estimate.Rdata')
+
+## Initialize an empty dataframe to hold results
+estimated_demand_df <- data.frame(time_period = c(),
+                                  RC = c(),
+                                  demand = c(),
+                                  engine = c())
+
+# Loop through the RCs, then estimate the probabilities using the Rust method, then do simulation.
+for (j in RC_range) {
+  RC = j 
+  
+  ### Set a critical value for to measure the deviation between iterative updates of EV. The distance between the two EV matrices
+  ### is the infinity norm of the difference
+  cri <- 10^(-8)
+  
+  ### Set an initial value for the EV matrix (all 0s, EV), and another EV object to hold the updated estimates, EV2.
+  EV <- matrix(100,33,2)
+  EV2 <- matrix(0,33,2)
+  
+  ## While the infinity norm is less than the threshold, iterate
+  while(max(abs(EV-EV2))>cri){
+    
+    ### Set the current EV to the previous updated EV
+    EV <- EV2
+    ### Compute a new updated EV by iterating on the current EV
+    EV2 <- value.Iterate(EV)
+  }
+  
+  ### Do one last update to set EV equal to the last EV2
+  EV <- EV2
+  
+  # get EV(x,i) for x=0,1,2,..,30
+  ### EV contains extra states, which we needed to compute the above computation. Throw them away.
+  EV <- EV[1:31,]
+  
+  ### Get estimated probability based on the above EV
+  p_ix_hat <- choice.prob.Estimate()
+  ### Estimate demand using that probability
+  estimated_demand <- estimate_demand(n_sims, n_buses, n_periods)
+  
+  ### Add this estimate to a temp dataframe
+  estimated_demand_df_temp <- data.frame(time_period = seq(1, n_periods, 1), 
+                                    RC = rep(RC, n_periods),
+                                    demand = estimated_demand,
+                                    engine = rep('Engine 1', n_periods))
+  ### Collate temp dataframe to full dataframe
+  estimated_demand_df <- rbind(estimated_demand_df, estimated_demand_df_temp)
+  
+}
+
+### Reset theta_1 to the "new engine", redo the exercise above.
+theta_1 = .02
+
+### Loop through RCs
+for (j in RC_range) {
+  RC = j 
+  
+  ### Set a critical value for to measure the deviation between iterative updates of EV. The distance between the two EV matrices
+  ### is the infinity norm of the difference
+  cri <- 10^(-8)
+  
+  ### Set an initial value for the EV matrix (all 0s, EV), and another EV object to hold the updated estimates, EV2.
+  EV <- matrix(100,33,2)
+  EV2 <- matrix(0,33,2)
+  
+  ## While the infinity norm is less than the threshold, iterate
+  while(max(abs(EV-EV2))>cri){
+    
+    ### Set the current EV to the previous updated EV
+    EV <- EV2
+    ### Compute a new updated EV by iterating on the current EV
+    EV2 <- value.Iterate(EV)
+  }
+  
+  ### Do one last update to set EV equal to the last EV2
+  EV <- EV2
+  
+  # get EV(x,i) for x=0,1,2,..,30
+  ### EV contains extra states, which we needed to compute the above computation. Throw them away.
+  EV <- EV[1:31,]
+  
+  ### Get probability estimates based on EV
+  p_ix_hat <- choice.prob.Estimate()
+  ### Estimate demand
+  estimated_demand <- estimate_demand(n_sims, n_buses, n_periods)
+  
+  ### Add to temp dataframe
+  estimated_demand_df_temp <- data.frame(time_period = seq(1, n_periods, 1), 
+                                         RC = rep(RC, n_periods),
+                                         demand = estimated_demand,
+                                         engine = rep('Engine 2', n_periods))
+  ### Collate to full dataframe
+  estimated_demand_df <- rbind(estimated_demand_df, estimated_demand_df_temp)
+  
+}
+
+### For a reduced set of RCs, see the period-by-period demand
+estimated_demand_df %>% 
+  filter(RC %in% c(1, 3, 5, 7, 10)) %>%
+ggplot(., aes(x=time_period, y=demand, color=as.factor(RC))) + geom_line() + 
+  facet_wrap(~engine)
+
+### Aggregate over periods to get demand as a function of RC for different thetas.
+estimated_demand_df %>% 
+  group_by(RC, engine) %>% 
+  summarise(total_demand = sum(demand)) %>%
+  ungroup() %>% 
+  ggplot(., aes(x=RC, y=total_demand, color=engine)) + geom_line()
 
 
 ################
