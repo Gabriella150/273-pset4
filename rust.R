@@ -136,6 +136,7 @@ df <- data.frame('x'=c(1:30, 1:30),'EV'=c(EV[2:31,1], EV[2:31,2]),'Action' = c(r
 ev_plot <- ggplot(df, aes(x=x, y=EV, color=Action)) + geom_point() + xlab('Mileage') + ylab('EV') + 
   ggtitle('EV as a function of mileage and action \n at x between 1 and 30') + 
   theme(plot.title = element_text(hjust = 0.5))
+ggsave(ev_plot, file='ev_plot.png', height=6, width=6, units='in')
 
 ### This is a plot to see the EV data in the attached rust matlab file. The state space is different than ours (200 states),
 ### so its hard to compare. Our's is linear (seems wrong), whereas the provided data is not. However, the first 30 states 
@@ -146,6 +147,7 @@ df_rust <- data.frame('x'=c(seq(1,201), seq(1, 201)), 'EV'=c(data$EV[,1], data$E
 ev_plot_rust <- ggplot(df_rust, aes(x=x, y=EV, color=Action)) + geom_point() + xlab('Mileage') + ylab('EV') + 
   ggtitle('Rust dataset EV as a function of mileage and action \n at x between 1 and 201') + 
   theme(plot.title = element_text(hjust = 0.5))
+ggsave(ev_plot_rust, file='ev_plot_rust.png', height=6, width=6, units='in')
 
 ################
 # Question 2.4 #
@@ -184,30 +186,30 @@ per_bus_statistics <- data.frame(bus = seq(1, 100, 1),
 
 ### Create some plots
 mean_mileage_plot <- ggplot(per_bus_statistics, aes(x=mean_x_per_bus)) + geom_histogram() + 
-  xlab('Mean Mileage (buckets of 5,000 miles)') + ylab('Number of buses') + ggtitle('Mean mileage across buses') + 
+  xlab('Mean Mileage (buckets of 5,000 miles)') + ylab('Number of buses') + ggtitle('Mean mileage \n across buses') + 
   theme(plot.title = element_text(hjust = 0.5))
 ggsave(mean_mileage_plot, file='mean_mileage_plot.png', height=4, width=4, units='in')
 
 max_mileage_plot <- ggplot(per_bus_statistics, aes(x=max_x_per_bus)) + geom_histogram() + 
-  xlab('Max Mileage (buckets of 5,000 miles)') + ylab('Number of buses') + ggtitle('Max mileage across buses') + 
+  xlab('Max Mileage (buckets of 5,000 miles)') + ylab('Number of buses') + ggtitle('Max mileage \n across buses') + 
   theme(plot.title = element_text(hjust = 0.5))
 ggsave(max_mileage_plot, file='max_mileage_plot.png', height=4, width=4, units='in')
 
 sd_mileage_plot <- ggplot(per_bus_statistics, aes(x=sd_x_per_bus)) + geom_histogram() + 
   xlab('Mileage Standard Deviation (buckets of 5,000 miles)') + ylab('Number of buses') + 
-  ggtitle('Mileage standard deviation across buses') + 
+  ggtitle('Mileage standard deviation \n across buses') + 
   theme(plot.title = element_text(hjust = 0.5))
 ggsave(sd_mileage_plot, file='sd_mileage_plot.png', height=4, width=4, units='in')
 
 time_to_engine_replacement_plot <- ggplot(per_bus_statistics, aes(x=mean_engine_replacement_per_bus)) + geom_histogram() + 
   xlab('Mean Engine Replacement Mileage (buckets of 5,000 miles)') + ylab('Number of buses') + 
-  ggtitle('Mean engine replacement mileage across buses') + 
+  ggtitle('Mean engine replacement \n mileage across buses') + 
   theme(plot.title = element_text(hjust = 0.5)) 
 ggsave(time_to_engine_replacement_plot, file='time_to_engine_replacement_plot.png', height=4, width=4, units='in')
 
 replacements_plot <- ggplot(per_bus_statistics, aes(x=replacements)) + geom_histogram() + 
   xlab('Number of engine replacements') + ylab('Number of buses') + 
-  ggtitle('Number of engine replacements across buses') + 
+  ggtitle('Number of engine replacements \n across buses') + 
   theme(plot.title = element_text(hjust = 0.5)) 
 ggsave(replacements_plot, file='replacements_plot.png', height=4, width=4, units='in')
 
