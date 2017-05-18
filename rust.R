@@ -732,3 +732,27 @@ ggsave(aggregate_demand_plot, file='aggregate_demand_plot.png', height=4, width=
 ################
 # Question 3.5 #
 ################
+
+head(estimated_demand_df)
+tail(estimated_demand_df)
+
+n_periods = 15
+
+### for a given RC and engine, average demand across time periods
+engine_value <- estimated_demand_df %>%
+group_by(RC, engine) %>%
+ summarize(avg_demand=mean(demand))
+
+### for engine 1 (original one)
+engine_value %>%
+filter(engine=='Engine 1',RC>=6) %>%
+summarize(value = RC*avg_demand) %>%
+summarize(total_value = sum(value)) %>%
+as.numeric()* n_periods
+
+### for engine 2 (new one)
+engine_value %>%
+filter(engine=='Engine 2',RC>=20) %>%
+summarize(value = RC*avg_demand) %>%
+summarize(total_value = sum(value)) %>%
+as.numeric()* n_periods
