@@ -133,7 +133,8 @@ df <- data.frame('x'=c(1:30, 1:30),'EV'=c(EV[2:31,1], EV[2:31,2]),'Action' = c(r
 
 ### Generate a plot that compares the EV of replacing the engine and not replacing the engine
 ev_plot <- ggplot(df, aes(x=x, y=EV, color=Action)) + geom_point() + xlab('Mileage') + ylab('EV') + 
-  ggtitle('EV as a function of mileage and action \n at x between 1 and 30')
+  ggtitle('EV as a function of mileage and action \n at x between 1 and 30') + 
+  theme(plot.title = element_text(hjust = 0.5))
 
 ### This is a plot to see the EV data in the attached rust matlab file. The state space is different than ours (200 states),
 ### so its hard to compare. Our's is linear (seems wrong), whereas the provided data is not. However, the first 30 states 
@@ -142,11 +143,51 @@ ev_plot <- ggplot(df, aes(x=x, y=EV, color=Action)) + geom_point() + xlab('Milea
 df_rust <- data.frame('x'=c(seq(1,201), seq(1, 201)), 'EV'=c(data$EV[,1], data$EV[,2]), 'Action' = c(rep('i = 0', 201),
                                                                                                      rep('i = 1', 201)))
 ev_plot_rust <- ggplot(df_rust, aes(x=x, y=EV, color=Action)) + geom_point() + xlab('Mileage') + ylab('EV') + 
-  ggtitle('Rust dataset EV as a function of mileage and action \n at x between 1 and 201')
+  ggtitle('Rust dataset EV as a function of mileage and action \n at x between 1 and 201') + 
+  theme(plot.title = element_text(hjust = 0.5))
 
 ################
 # Question 2.4 #
 ################
+
+### Calculate the mean mileage, mean time to engine replacement, max mileage, min mileage, and sd mileage over the whole sample
+mean_x <- mean(x)
+mean_engine_replacement_age <- mean(x[i == 1])
+max_x <- max(x)
+min_x <- min(x)
+sd_x <- sd(x)
+
+### Calculate the per bus mean mileage, mean time to engine replacement, max mileage, min mileage, and sd mileage
+mean_x_per_bus <- apply(x, 2, function(x) {mean(x)})
+max_x_per_bus <- apply(x, 2, function(x) {max(x)})
+min_x_per_bus <- apply(x, 2, function(x) {min(x)})
+sd_x_per_bus <- apply(x, 2, function(x) {sd(x)})
+mean_engine_replacement_per_bus <- apply(x*i, 2, function(x) {sum(x)/sum(x != 0)})
+
+### Collate per bus information into a dataframe
+per_bus_statistics <- data.frame(bus = seq(1, 100, 1),
+                                    mean_x_per_bus = mean_x_per_bus,
+                                    max_x_per_bus = max_x_per_bus,
+                                    min_x_per_bus = min_x_per_bus,
+                                    sd_x_per_bus = sd_x_per_bus,
+                                    mean_engine_replacement_per_bus = mean_engine_replacement_per_bus)
+
+### Create some plots
+mean_mileage_plot <- ggplot(per_bus_statistics, aes(x=mean_x_per_bus)) + geom_histogram() + 
+  xlab('Mean Mileage (buckets of 5,000 miles)') + ylab('Number of buses') + ggtitle('Mean mileage across buses') + 
+  theme(plot.title = element_text(hjust = 0.5))
+max_mileage_plot <- ggplot(per_bus_statistics, aes(x=max_x_per_bus)) + geom_histogram() + 
+  xlab('Max Mileage (buckets of 5,000 miles)') + ylab('Number of buses') + ggtitle('Max mileage across buses') + 
+  theme(plot.title = element_text(hjust = 0.5))
+sd_mileage_plot <- ggplot(per_bus_statistics, aes(x=sd_x_per_bus)) + geom_histogram() + 
+  xlab('Mileage Standard Deviation (buckets of 5,000 miles)') + ylab('Number of buses') + 
+  ggtitle('Mileage standard deviation across buses') + 
+  theme(plot.title = element_text(hjust = 0.5))
+time_to_engine_replacement_plot <- ggplot(per_bus_statistics, aes(x=mean_engine_replacement_per_bus)) + geom_histogram() + 
+  xlab('Mean Engine Replacement Mileage (buckets of 5,000 miles)') + ylab('Number of buses') + 
+  ggtitle('Mean engine replacement mileage across buses') + 
+  theme(plot.title = element_text(hjust = 0.5)) 
+
 
 
 
@@ -160,6 +201,10 @@ ev_plot_rust <- ggplot(df_rust, aes(x=x, y=EV, color=Action)) + geom_point() + x
 ### A function to compute the probability of Zurcher's choices using the EVs we calculate using the EV calculation
 ### framework above. The probability of choosing different actions basically acts like a multichoice logit function.
 choice.prob.Estimate <- function(){
+  
+  ### Initialize an empty matrix to hold choice probability estimates. 
+  p_i <- matrix(0,31,2)
+  
   ### Iterate through all of the possible mileage states, x.
   for (x in 1:31){
     ## For each mileage state x, calculate the probability that Zurcher will choose i = 0.
@@ -172,222 +217,233 @@ choice.prob.Estimate <- function(){
   return(p_i)
 }
 
-log.likelihood.Compute <- function(){
-  for (bus in 1:100){
-    for (t in 1:999){
+### A function to calculate the total log likelihood of the observed data given a set of parameters. This method assumes that 
+### the probabilities across periods and buses are independent, so we can just add up all of the log probabilities. 
+log.likelihood.Compute <- function() {
+  
+  ### Initialize 0-valued variables to hold the log choice probability, the log transition probability, 
+  ### and the sum of the two.
+  log_choice_prob <- 0
+  log_transition_prob <- 0
+  total <- 0
+  
+  ### Iterate over buses
+  for (bus in 1:100) {
+    ### Iterate over time periods
+    for (t in 1:999) {
+      ### We special case mileage states greater than 30, since they are a bit strange in our data. Otherwise, we calculate
+      ### the choice probability using the current value of p_i according to the EV values we calculated to get the 
+      ### choice probability. Take the log and add it to the current running value.
       if (x[t,bus] <= 30){
         log_choice_prob <- log(p_i[x[t,bus]+1,i[t,bus]+1]) + log_choice_prob 
+      ### Do the same thing for our special cased, x > 30 case.
       } else {
         log_choice_prob <- log(p_i[31,i[t,bus]+1]) + log_choice_prob
       }
       
+      ### Calculate over the transitions for each bus the sum of the log transition probabilities. We have our estimates of 
+      ### theta_3 given the empirical transition probabilities. So we can just grab that for each observed transition and add it
+      ### to the total log transition probability.
       
-      if (x[t+1,bus]-x[t,bus]==0){
+      ### First we do the j = 0 case.
+      if (x[t+1,bus]-x[t,bus]==0) {
         log_transition_prob <- log(theta_30)+log_transition_prob
+      ### Then the j = 1 case.
       } else if (x[t+1,bus]-x[t,bus]==1) {
         log_transition_prob <- log(theta_31)+log_transition_prob
+      ### And finally the j = 2 case.
       } else if (x[t+1,bus]-x[t,bus]==2) {
         log_transition_prob <- log(theta_32)+log_transition_prob
       }
     }
     
+    ### Now, get the total log likelihood by adding up all of the transition components and the choice components.
     total <- (log_choice_prob+log_transition_prob) + total
   }
   return (total)
 }
 
-### First we initialize a p_i matrix of all zeros. This is where we will store our estimates at each step.
-p_i <- matrix(0,31,2)
-log_choice_prob <- 0
-log_transition_prob <- 0
-total <- 0
+### Now we're actually going to use the nested fixed point algorithm to get the maximum likelihood estimates of the parameters
+### that we care about. This process has three steps.
 
-log.likelihood.Compute()
+### Step 1: We would calculate theta_30, theta_31, and theta_31 directly from the data. This step is not in the loop, and we've
+### actually already done this and it doesn't change, so we don't need to do it again.
 
-# putting things together
+### Step 2: Next, we are going to set up a grid over values of theta_1, beta, and RC that we will calculate the 
+### log likelihood to determine the maximum likelihood parameter values. We'll also initialize a dataframe
+### to hold the parameter values and the log likelihoods.
 
-# 1) compute theta_30,31,32 directly from the data, this step is not in the loop
-
-# 2) create a grid for theta_1, beta and RC
 theta_1_range <- seq(.01,.10,.01)
 beta_range <- seq(.90,.99,.01)
 RC_range <- seq(6,15,1)
-
-# 3) compute nested fixed point
 likelihood <- data.frame('theta_1'=rep(0),'beta'=rep(0),'RC'=rep(0),'log.likelihood'=rep(0))
-#likelihood <- data.frame('theta_1'='','beta'='','RC'='','log.likelihood'='')
 
-for (theta_1 in theta_1_range){
-        print (theta_1) # just to check the progress
-        for (beta in beta_range){
-                for (RC in RC_range){
-                        # fix the value of parameters
-                        
-                        # value function iteration 
-                        EV <- matrix(100,33,2)
-                        EV2 <- matrix(0,33,2)
-                        
-                        while(max(abs(EV-EV2))>cri){
-                                EV <- EV2
-                                EV2 <- value.Iterate(EV)
-                        }
-                        
-                        EV <- EV[1:31,]
-                        
-                        # choice probability 
-                        
-                        p_i <- matrix(0,31,2)
-                        p_i <- choice.prob.Estimate(p_i)
-                        
-                        # likelihood
-                        
-                        log_choice_prob <- 0
-                        log_transition_prob <- 0
-                        total <- 0
-                        
-                        likelihood <- rbind(likelihood,c(theta_1,beta,RC,log.likelihood.Compute()))
-                        
-                        
-                }
-        }
+### Step 3: Now we actually do the nested fixed point computation.
+
+### Loop through theta_1
+for (theta_1 in theta_1_range) {
+  ### Loop through beta 
+  for (beta in beta_range) {
+    ### Loop through RC
+    for (RC in RC_range) {
+      
+      ### Initialize the EV functions to the initial values we used above.
+      EV <- matrix(100,33,2)
+      EV2 <- matrix(0,33,2)
+      
+      ### Iteratively compute the EV values.
+      while(max(abs(EV-EV2))>cri){
+        EV <- EV2
+        EV2 <- value.Iterate(EV)
+      }
+      
+      EV <- EV2
+      EV <- EV[1:31,]
+      
+      ### Given these values of EV, calculated the choice probabilities
+      p_i <- choice.prob.Estimate()
+      
+      ### Given the EV values, the choice probabilities and the parameters, calculate
+      ### the log-likelihood of the data.
+      likelihood <- rbind(likelihood,c(theta_1,beta,RC,log.likelihood.Compute()))
+    }
+  }
 }
 
+### Retrieve the row in the likelihood dataframe corresponding to the maximum likelihood estimate
 likelihood <- likelihood[-1,]
 likelihood[which.max(likelihood[,4]),]
 
-#### Hotz-Miller approach 
+################
+# Question 3.2 #
+################
 
-# value matrix 
-V <- matrix(0,33,2)
+### Now we wil get estimates of the parameters using the Hotz and Miller conditional choice probability approach. This will
+### allow us to compare these parameter estimates to those obtained using the Rust approach.
 
-# estiamted choice probabiity
+### First, we need to calculate the probability of the agent choosing either i = 0 or i = 1 based on the state that they find
+### a given bus in, x, at some time period t. This will be the baseline that we use to try and find the best parameter values
+### (i.e., which parameter values minimize the infinity norm between these true probabilities and the estimated probabilities)
+
+### The probability matrix
 p_ix <- matrix(0,33,2)
-
+### The vector of how often the agent chooses i=1 given state x
 ones <- vector()
+### The vector of how often the agent finds a bus in state x
 total <- vector()
 
+### Loop through the states
 for (state in 0:32){
-        
-        a <- 0
-        b <- 0
-        
-        for (bus in 1:100){
-                
-                a <- sum(i[which(x[,bus]==state),bus]) + a 
-                b <- length(i[which(x[,bus]==state),bus]) + b
-        }
-        
-        ones[state+1] <- a 
-        total[state+1] <- b
+  
+  ### For a given state, a will track how many times i = 1 and b will track how many times that state occurs. 
+  ### Initialize them to 0 for the given state.
+  a <- 0
+  b <- 0
+  
+  ### Loop over the buses
+  for (bus in 1:100){
+    
+    ### Increment how many times the agent chooses i = 1 in state x 
+    a <- sum(i[which(x[,bus]==state),bus]) + a 
+    ### Increment how many times the state x occurs
+    b <- length(i[which(x[,bus]==state),bus]) + b
+  }
+  
+  ### Add the most recent estimates to the vector.
+  ones[state+1] <- a 
+  total[state+1] <- b
 }
 
-ones
-total
-
+### Based on the ones and total vectors, updated the choice probability matrix.
 p_ix[,1] <- 1-ones/total
 p_ix[,2] <- ones/total
 
-# simulation
-
+### Specify a number of constants that will be used in the Hotz and Miller algorithm:
+### S: The number of "simulations" to do per state / decision
+### gamma: This should be Euler's constant
+### theta_1_range: The range of theta_1 values to test
+### beta_range: The range of beta_values to test
+### RC_range: The range of RC values to test
 S = 1000
-gamma = 0
-
-# when i=0
-for (state in 0:30){
-        a = 0
-        for (s in 1:S){
-                x_prime = state + sample(c(0,1,2),1,replace = T, prob = c(theta_30,theta_31,theta_32))
-                i_prime = sample(c(0,1),1,replace=T,prob = c(p_ix[x_prime+1,1],p_ix[x_prime+1,2]))
-                a = (u(state,0) + beta*(u(x_prime,i_prime)+gamma-log(p_ix[x_prime+1,i_prime+1]))) + a
-        }
-        
-        V[state+1,1] = a/S
-}
-
-# when i=1
-for (state in 0:30){
-        b=0
-        for (s in 1:S){
-                # x_prime = 0 
-                i_prime = sample(c(0,1),1,replace=T,prob = c(p_ix[1,1],p_ix[1,2]))
-                b = (u(state,1) + beta*(u(0,i_prime)+gamma-log(p_ix[1,i_prime+1]))) + b
-        }
-        
-        V[state+1,2] = b/S
-}
-
-V
-p_ix
-
-# estimated choice probability
-p_ix_hat <- matrix(0,33,2)
-
-for (state in 0:30){
-        p_ix_hat[state+1,1] <- exp(V[state+1,1])/(exp(V[state+1,1])+exp(V[state+1,2]))
-        p_ix_hat[state+1,2] <- 1- p_ix_hat[state+1,1]
-}
-p_ix_hat
-
-#p_ix <- p_ix[1:31,]
-#p_ix_hat <- p_ix_hat[1:31,]
-
-p_ix
-p_ix_hat
-
-max(p_ix-p_ix_hat)
-
-# add in the outer loop
+gamma = .577
 theta_1_range <- seq(.01,.10,.01)
 beta_range <- seq(.90,.99,.01)
 RC_range <- seq(6,15,1)
 
+### Initialize a dataframe to hold different parameter combinations and the infinity-norm between the actual conditional 
+### choice probabilities and the estimated ones
 difference <- data.frame('theta_1'=rep(0),'beta'=rep(0),'RC'=rep(0),'difference'=rep(0))
 
-for (theta_1 in theta_1_range){
-        print (theta_1)
-        for (beta in beta_range){
-                for (RC in RC_range){
-                        
-                        V <- matrix(0,33,2)
-                        
-                        # when i=0
-for (state in 0:30){
+### Loop through theta_1
+for (theta_1 in theta_1_range) {
+  ### Loop through theta_2
+  for (beta in beta_range) {
+    ### Loop through RC
+    for (RC in RC_range) {
+      
+      ### Initialize an empty valuation matrix
+      V <- matrix(0,33,2)
+      ### Initialize an empty conditional choice probability matrix
+      p_ix_hat <- matrix(0,33,2)
+      
+      ### Iterate through the states
+      for (state in 0:30){
+        ### Initialize a and b, which will basically track a running total of V for different choices over simulations, to 0.
         a = 0
+        b = 0 
+        ### Iterate through the simulations. Note that ideal we would probably want to go more than one time step into the 
+        ### future. However, because of the limitations in our dataset, we only go one time step forward. This is mainly because
+        ### it's unclear how we would draw i (the choice) for states that do not appear in our data (i.e., x = 34).
         for (s in 1:S){
-                x_prime = state + sample(c(0,1,2),1,replace = T, prob = c(theta_30,theta_31,theta_32))
-                i_prime = sample(c(0,1),1,replace=T,prob = c(p_ix[x_prime+1,1],p_ix[x_prime+1,2]))
-                a = (u(state,0) + beta*(u(x_prime,i_prime)+gamma-log(p_ix[x_prime+1,i_prime+1]))) + a
+          ## Conditional on choosing i = 0, simulate the next state that a given bus will end up in by drawing from the 
+          ## transition probabilities.
+          x_prime_0 = state + sample(c(0,1,2),1,replace = T, prob = c(theta_30,theta_31,theta_32))
+          ## Conditional on choosing i = 0 and ending up in some state in the next time period, randomly simulate a draw from 
+          ## i based on the conditional choice probabilities
+          i_prime_0 = sample(c(0,1),1,replace=T,prob = c(p_ix[x_prime_0+1,1],p_ix[x_prime_0+1,2]))
+          # Figure out the expected utility from this truncated sequence of choices.
+          a = (u(state,0) + beta*(u(x_prime_0,i_prime_0)+gamma-log(p_ix[x_prime_0+1,i_prime_0+1]))) + a
+          
+          ## Conditional on choosing i = 1, we don't need to simulate the next state that a bus will end up in. It will always
+          ## be x = 0. So we jump right to simulating the draw from i for x = 0.
+          i_prime_1 = sample(c(0,1),1,replace=T,prob = c(p_ix[1,1],p_ix[1,2]))
+          ## Figure out the expected utility from this truncated sequence of choices.
+          b = (u(state,1) + beta*(u(0,i_prime_1)+gamma-log(p_ix[1,i_prime_1+1]))) + b
         }
         
+        ## Set the value of V to be the average over all S of our simulations for both the i = 0 and i = 1 choices.
         V[state+1,1] = a/S
-}
-
-# when i=1
-for (state in 0:30){
-        b=0
-        for (s in 1:S){
-                # x_prime = 0 
-                i_prime = sample(c(0,1),1,replace=T,prob = c(p_ix[1,1],p_ix[1,2]))
-                b = (u(state,1) + beta*(u(0,i_prime)+gamma-log(p_ix[1,i_prime+1]))) + b
-        }
-        
         V[state+1,2] = b/S
-}
-
-                p_ix_hat <- matrix(0,33,2)
-
-for (state in 0:30){
+        ## Use the multinomial logit-esque probability expression to figure out the probability of choosing i = 0 or i = 1 
+        ## given that the bus is in state x.
         p_ix_hat[state+1,1] <- exp(V[state+1,1])/(exp(V[state+1,1])+exp(V[state+1,2]))
         p_ix_hat[state+1,2] <- 1- p_ix_hat[state+1,1]
+      }
+      
+      ### Now that we have a full conditional choice probability matrix, calculate the infinity norm (i.e., largest 
+      ### absolute difference between the empirical conditional choice probabilities and those estimated with the 
+      ### given parameters)
+      difference <- rbind(difference,c(theta_1,beta,RC,max(abs(p_ix[1:31,]-p_ix_hat[1:31,]))))
+    }
+  }
 }
 
-difference <- rbind(difference,c(theta_1,beta,RC,max(abs(p_ix[1:31,]-p_ix_hat[1:31,]))))
-                        
-                        }
-                        
-        }
-}
-
-head(difference)
+### Find the set of parameters that minimizes this difference
 difference <- difference[-1,]
 difference[which.min(difference[,4]),]
+
+################
+# Question 3.3 #
+################
+
+
+
+################
+# Question 3.4 #
+################
+
+
+
+################
+# Question 3.5 #
+################
