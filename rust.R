@@ -517,7 +517,46 @@ save(V, p_ix_hat, difference, parameter_estimates, file='hotz_and_miller_estimat
 # Question 3.3 #
 ################
 
+### old engine
+theta_1 = .05
+RC = 10
 
+### apply Rust's approach
+cri <- 10^(-8)
+EV <- matrix(100,33,2)
+EV2 <- matrix(0,33,2)
+
+while(max(abs(EV-EV2))>cri){
+  ### Set the current EV to the previous updated EV
+  EV <- EV2
+  ### Compute a new updated EV by iterating on the current EV
+  EV2 <- value.Iterate(EV)
+}
+
+### Do one last update to set EV equal to the last EV2
+EV_old <- EV2
+
+### new engine
+theta_1 = .02
+RC = 20
+
+### repeat the exercise above
+cri <- 10^(-8)
+EV <- matrix(100,33,2)
+EV2 <- matrix(0,33,2)
+
+while(max(abs(EV-EV2))>cri){
+  ### Set the current EV to the previous updated EV
+  EV <- EV2
+  ### Compute a new updated EV by iterating on the current EV
+  EV2 <- value.Iterate(EV)
+}
+
+### Do one last update to set EV equal to the last EV2
+EV_new <- EV2
+
+### Returns which engine is preferred (old or new)
+c('old','new')[which.max(c(EV_old[1,1],EV_new[1,1]))]
 
 ################
 # Question 3.4 #
