@@ -218,6 +218,10 @@ where $x^s_{t+1}$ is drawn from the transition probability $\hat{\theta}_{30}, \
 
 \item[(3)]
 
+In order to determine which engine HZ prefers, we simply need to look at HZ's value function for both engines at $t=0$ (which corresponds to $x_t = 0$ for all buses). There are a number of different mileage evolution paths that any given bus could take. However, the ex ante value function at time = 0 provides a weighted average of all of these scenarios. So at the outset, he will prefer whichever engine provides the most value in expectation.
+
+[paragraph with the results / which engine is preferred].
+
 \item[(4)]
 
 We want to compute HZ's demand function for the two buses, which we will denote as engine 1 ($\theta_1 = 0.09, RC = 6$) and engine 2 ($\theta_1 = 0.02, RC = 20$) as a function of RC. In order to do so, we obtain conditional choice probability estimates, $\hat{\mathbb{P}}(i = 1 | x)$ by using the Rust method to iterate EV values. We use the Rust methodology because the Hotz and Miller methodology depends on the observed conditional choice probabilities, which we know do \textit{not} correspond to the counterfactual engine 2.
@@ -250,6 +254,16 @@ HZ's demand for engines as a function of the period, $t$ for a few values of RC 
 \end{figure} 
 
 \item[(5)]
+
+To determine the total value of the engines, assuming marginal cost $RC$, we can simply compute the total area to the right of a given $RC$ in a demand curve that looks like Figure \ref{fig:agg_demand_rc}. This area will give the total surplus that HZ gets from the engine in a given period.  In order to get a total value, we simply multiply this by the number of periods we want to consider. Mathematically, the total value is 
+
+\begin{equation}
+V_{engine}(RC) = n \times \int_{RC}^{\infty} D_{engine}(p) dp,
+\end{equation}
+
+\noindent where $n$ is the number of periods and $D(p)$ is the amount of demand that HZ would have a given RC.
+
+For engine 1, the total value is []. For engine 2, the total value is []. R\&D costs are essentially a fixed cost, so the maximum HZ should be willing to pay for the engine with $\theta_1 = 0.02$ is the difference in the total values of the two engines for a given value of RC. Given $RC = 20$ for the second engine and $RC = 6$ (our estimate) for the first engine, the maximum HZ would be willing to pay is [].
 
 \end{itemize}
 
