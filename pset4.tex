@@ -65,7 +65,7 @@
 \textsc{Massachusetts Institute of Technology \\ Sloan School of Management, Spring 2016} \\ [25pt] % Your university, school and/or department name(s)
 \fi
 \horrule{0.5pt} \\[0.4cm] % Thin top horizontal rule
-\huge 14.273 Industrial Organization: Pset4 \\ % The assignment title
+\huge 14.273 Industrial Organization: Problem Set 4 \\ % The assignment title
 \horrule{.5pt} \\[0.4cm] % Thick bottom horizontal rule
 }
 
@@ -78,7 +78,7 @@
 \begin{itemize}
 \item[1.] Model setup.\\
 
-Following the notations in Rust (1987), HZ's flow utility is:
+Following the notations in Rust \cite{rust1987optimal}, HZ's flow utility is:
 \[u(x_t,i_t,\theta_1)+\epsilon_t(i_t) =
 \begin{cases}
 -RC-c(0,\theta_1)+\epsilon_t(1) & i_t = 1\\
@@ -95,7 +95,7 @@ HZ chooses $i_t$ in every period $t$ to maximize an infinite sum of discounted f
 
 Rewrite the value function as in the Bellman optimality form:
 \[V(x_t, \epsilon_t) = \text{max}_{i_t} \ (u(x_t,i_t,\theta_1)+\epsilon_t(i_t)) + \beta \mathbb{E}[V(x_{t+1},\epsilon_{t+1})|x_t, i_t]\]
-where the expectation is with respect to (conditional) state transition probability of both $x$ and $\epsilon$, see Rust (1987) equation (4.5). The Bellman equation breaks the dynamic optimization problem into an infinite series of static choices.
+where the expectation is with respect to (conditional) state transition probability of both $x$ and $\epsilon$, see Rust \cite{rust1987optimal} equation (4.5). The Bellman equation breaks the dynamic optimization problem into an infinite series of static choices.
 
 
 \item[2.]
@@ -122,7 +122,7 @@ where $u(x_t,i_t,\theta_1)$ is defined in 1 and for convenience:
 \[V_{t+1} :=V(x_{t+1},\epsilon_{t+1})\]
 
 \item[(3)]
-For discrete $x$, under the assumption that the errors are type I extreme value distributed, we have (Rust (1987) equation (4.14)):
+For discrete $x$, under the assumption that the errors are type I extreme value distributed, we have (Rust \cite{rust1987optimal} equation (4.14)):
 \[EV(x,i) = \sum_y \text{log} \{\sum_{j} \text{exp}[u(y,j)+\beta EV(y,j)]\}\cdot p(y|x,i)\tag{2.2}\]
 where
 \[EV(x,i) := \mathbb{E}[V_{t+1}|x_t,i_t]\]
@@ -194,7 +194,7 @@ The final, bottom right plot in \ref{fig:summary_statistics} also shows the empi
 \begin{itemize}
 \item[(1)] In the outer loop we search over a grid of values for $(\theta_1, \beta, RC)$, and compute the log likelihood function:
 \[\text{log}L = \sum_{b} \{\sum_{t} \text{log} \mathbb{P}(i_{bt}|x_{bt}) + \sum_t \text{log} \mathbb{P}(x_{bt}|x_{bt-1},i_{t-1})\}\]
-where $b$ indexes for bus and $t$ indexes for time period. We compute a log likelihood for each combination of values for $(\theta_1, \beta, RC)$ and choose the set of parameters that maximizes the log-likelihood of the data. The maximum likelihood parameters obtained with the Rust method are:
+where $b$ indexes for bus and $t$ indexes for time period. We compute a log likelihood for each combination of values for $(\theta_1, \beta, RC)$ and choose the set of parameters that maximizes the log-likelihood of the data. The maximum likelihood parameters obtained with the Rust \cite{rust1987optimal} method are:
 
 \begin{eqnarray*}
 \theta_1 & = 0.05 \\
@@ -204,7 +204,7 @@ RC & = 10
 
 The maximum-likelihood parameters that we obtain using the Rust method are exactly identical to the ``true" parameters.
 
-\item[(2)] In Hotz-Miller's approach, we will estimate the choice specific value function (as opposed to the expected value function as in Rust). We start by noting that conditional choice probability is observed directly from the data:
+\item[(2)] In Hotz-Miller's \cite{hotz1993conditional} approach, we will estimate the choice specific value function (as opposed to the expected value function as in Rust). We start by noting that conditional choice probability is observed directly from the data:
 \[\hat{\mathbb{P}}(i=1|x) = \frac{\sum_{b}\sum_{t} 1_{\{i_{bt}=1, x_{bt}=x\}}}{\sum_{b}\sum_{t} 1_{\{x_{bt}=x\}}}\]
 The choice-specific value function (minus the structural error, and suppressing the dependency on $\theta_1, \theta_3$) can be presented recursively in the following form:
 \[\tilde{V}(x_t,i_t) = u(x_t,i_t)+\beta\mathbb{E}_{x_{t+1}}[\mathbb{E}_{i_{t+1}}[\mathbb{E}_{\epsilon_{t+1}}[u(x_{t+1},i_{t+1})+\epsilon_{t+1}+\beta(\cdot\cdot\cdot)|i_{t+1},x_{t+1}]|x_{t+1}]|x_t,i_t]\]
@@ -218,7 +218,7 @@ where $x^s_{t+1}$ is drawn from the transition probability $\hat{\theta}_{30}, \
 
 We only go one period forward because we only observe data for states up to $x_t = 33$. It is possible for larger $T$ that we would encounter a state that is not in our dataset. When this occurs, its unclear what value should be used as the conditional choice probability. While we avoid this issue by setting $T = 2$, this does reduce the precision of our estimates.
 
-The estimates we obtain using the Hotz and Miller method are
+The estimates we obtain using the Hotz and Miller \cite{hotz1993conditional} method are
 
 \begin{eqnarray*}
 \theta_1 & = 0.09 \\
@@ -226,7 +226,7 @@ The estimates we obtain using the Hotz and Miller method are
 RC & = 6.
 \end{eqnarray*}
 
-We expect that these estimates are likelihood less precise than those obtained via the Rust method (in this particular case) because we so severely truncate the sum in the Hotz and Miller method. The rust approach relies on parametric assumptions that in this particular case appear to be satisfied, which is why it outperforms Hotz and Miller. However, in general, Hotz and Miller may be a ``safer" approach (particularly when as a practitioner you are able to include more higher order terms in your sums).
+We expect that these estimates are likelihood less precise than those obtained via the Rust \cite{rust1987optimal} method (in this particular case) because we so severely truncate the sum in the Hotz and Miller \cite{hotz1993conditional} method. The Rust approach relies on parametric assumptions that in this particular case appear to be satisfied, which is why it outperforms Hotz and Miller. However, in general, Hotz and Miller may be a ``safer" approach (particularly when as a practitioner you are able to include more higher order terms in your sums).
 
 \item[(3)]
 
@@ -253,7 +253,7 @@ EV_{old}(x = 0) = -71.026 < -65.214 = EV_{new}(x = 0).
 \end{figure}
 
 
-We want to compute HZ's demand function for the two buses, which we will denote as engine 1 ($\theta_1 = 0.05, RC = 10$) and engine 2 ($\theta_1 = 0.02, RC = 20$) as a function of RC. In order to do so, we obtain conditional choice probability estimates, $\hat{\mathbb{P}}(i = 1 | x)$ by using the Rust method to iterate EV values. We use the Rust methodology because the Hotz and Miller methodology depends on the observed conditional choice probabilities, which we know do \textit{not} correspond to the counterfactual engine 2.
+We want to compute HZ's demand function for the two buses, which we will denote as engine 1 ($\theta_1 = 0.05, RC = 10$) and engine 2 ($\theta_1 = 0.02, RC = 20$) as a function of RC. In order to do so, we obtain conditional choice probability estimates, $\hat{\mathbb{P}}(i = 1 | x)$ by using the Rust \cite{rust1987optimal} method to iterate EV values. We use the Rust methodology because the Hotz and Miller \cite{hotz1993conditional} methodology depends on the observed conditional choice probabilities, which we know do \textit{not} correspond to the counterfactual engine 2.
 
 With those conditional choice probability estimates for the two engines in hand, we run 1,000 simulations of a bus's state transitions (and HZ's corresponding engine replacement decisions) over the first 15 periods. This allows us to get an expected, per-bus demand for engines over the first 15 periods. In order to get the expected demand that HZ has for engines across all buses, we simply multiply this figure by 100. So the expected demand (as a function of period $t$) is:
 
@@ -296,4 +296,6 @@ Theoretically, the maximum justifiable development would be $value_2 - value_1$,
 
 \mylisting[language=R]{./rust.R}
 
+\bibliographystyle{plain}
+\bibliography{pset4}
 \end{document}
