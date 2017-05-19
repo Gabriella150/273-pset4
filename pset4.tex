@@ -133,7 +133,7 @@ and $x, i$ are the state and choice of current period and $y,j$ are the state an
 we compute the expected value function in the inner loop of the nested fixed point algorithm (holding the value of $\theta$ fixed), we first guess the initial values of $EV(x,i)$ for all possible values of $x,i$ and use the equation (2.2) to iterate expected value function until it converges. The criterion is:
 \[\text{max}_{x,i}|EV^{T+1}(x,i)-EV^T(x,i)|<\eta\]
 
-The plot for $x=1-30$ at the true value of parameters are shown in Figure \ref{fig:ev_plot}.
+The plot for $x=1-30$ at the true value of parameters are shown in Figure \ref{fig:ev_plot}'s left panel. The provided EV values for the Rust dataset are provided in Figure \ref{fig:ev_plot}'s right panel. The two match well, suggesting that our implementation is working as expected. There is some strange behavior in the tail (for mileage $\in$ (29, 30). We suspect this is truncation error from not having data for higher states.
 
 \begin{figure}[ht!]
 \centering
@@ -146,8 +146,6 @@ The plot for $x=1-30$ at the true value of parameters are shown in Figure \ref{f
 \caption{Expected Value Function for $i = 0$ and $i = 1$. Left panel shows results using iterative method, right panel shows provided Rust results.}
 \label{fig:ev_plot}
 \end{figure}
-
-Interestingly, our EV results are linear in mileage, which is probably not expected. Despite a good amount of debugging, we have been unable to identify a problem. However, it's also unclear how our calculated results for \textit{just} 30 states should compare to the provided EV results, which provide information on 200 states. The first 30 states of the provided Rust EV estimates are decreasing in approximately linear fashion, suggesting our estimates might not be \textit{so} bad. However, the order of magnitude of our EV values (e.g., $10^{-1}$) is much smaller than the order of magnitude of EV values in the provided dataset (e.g., $\sim 70$), suggesting something is probably wrong. However, we don't have any more time to debug this, so we simply moved on.
 
 \item[(4)]
 
@@ -199,10 +197,12 @@ The final, bottom right plot in \ref{fig:summary_statistics} also shows the empi
 where $b$ indexes for bus and $t$ indexes for time period. We compute a log likelihood for each combination of values for $(\theta_1, \beta, RC)$ and choose the set of parameters that maximizes the log-likelihood of the data. The maximum likelihood parameters obtained with the Rust method are:
 
 \begin{eqnarray*}
-\theta_1 & = 0.1 \\
+\theta_1 & = 0.05 \\
 \beta & = 0.99 \\
-RC & = 6
+RC & = 10
 \end{eqnarray*}
+
+The maximum-likelihood parameters that we obtain using the Rust method are exactly identical to the ``true" parameters.
 
 \item[(2)] In Hotz-Miller's approach, we will estimate the choice specific value function (as opposed to the expected value function as in Rust). We start by noting that conditional choice probability is observed directly from the data:
 \[\hat{\mathbb{P}}(i=1|x) = \frac{\sum_{b}\sum_{t} 1_{\{i_{bt}=1, x_{bt}=x\}}}{\sum_{b}\sum_{t} 1_{\{x_{bt}=x\}}}\]
@@ -214,28 +214,29 @@ For simplicity, in the code we use one-period forward simulation where:
 \[\tilde{V}(x_t,i_t) = u(x_t,i_t)+\beta\mathbb{E}_{x_{t+1}}[\mathbb{E}_{i_{t+1}}[\mathbb{E}_{\epsilon_{t+1}}[u(x_{t+1},i_{t+1})+\epsilon_{t+1}|i_{t+1},x_{t+1}]|x_{t+1}]|x_t,i_t]\]
 it is estimated as:
 \[\hat{\tilde{V}}(x_t,i_t) = \frac{1}{S} \sum_{s} [u(x_t,i_t)+\beta[u(x^s_{t+1},i^s_{t+1})+\gamma -\text{log}(\hat{\mathbb{P}}(i^s_{t+1}|x^s_{t+1}))]]\]
-where $x^s_{t+1}$ is drawn from the transition probability $\hat{\theta}_{30}, \hat{\theta}_{31}, \hat{\theta}_{32}$, and $i^s_{t+1}$ is drawn from $\hat{\mathbb{P}}(i|x)$, $\gamma$ is the Euler's constant. We only go one period forward because we only observe data for states up to $x_t = 33$. It is possible for larger $T$ that we would encounter a state that is not in our dataset. When this occurs, its unclear what value should be used as the conditional choice probability. While we avoid this issue by setting $T = 2$, this does reduce the precision of our estimates.
+where $x^s_{t+1}$ is drawn from the transition probability $\hat{\theta}_{30}, \hat{\theta}_{31}, \hat{\theta}_{32}$, and $i^s_{t+1}$ is drawn from $\hat{\mathbb{P}}(i|x)$, $\gamma$ is the Euler's constant. 
+
+We only go one period forward because we only observe data for states up to $x_t = 33$. It is possible for larger $T$ that we would encounter a state that is not in our dataset. When this occurs, its unclear what value should be used as the conditional choice probability. While we avoid this issue by setting $T = 2$, this does reduce the precision of our estimates.
+
+The estimates we obtain using the Hotz and Miller method are
+
+\begin{eqnarray*}
+\theta_1 & = 0.09 \\
+\beta & = 0.92 \\
+RC & = 6.
+\end{eqnarray*}
+
+We expect that these estimates are likelihood less precise than those obtained via the Rust method (in this particular case) because we so severely truncate the sum in the Hotz and Miller method. The rust approach relies on parametric assumptions that in this particular case appear to be satisfied, which is why it outperforms Hotz and Miller. However, in general, Hotz and Miller may be a ``safer" approach (particularly when as a practitioner you are able to include more higher order terms in your sums).
 
 \item[(3)]
 
-In order to determine which engine HZ prefers, we simply need to look at HZ's value function for both engines at $t=0$ (which corresponds to $x_t = 0$ for all buses). There are a number of different mileage evolution paths that any given bus could take. However, the ex ante value function at time = 0 provides a weighted average of all of these scenarios. So at the outset, he will prefer whichever engine provides the most value in expectation. Given our estimation, HZ prefers the original engine over the new one.
+In order to determine which engine HZ prefers, we simply need to look at HZ's value function for both engines at $t=0$ (which corresponds to $x_t = 0$ for all buses). There are a number of different mileage evolution paths that any given bus could take. However, the ex ante value function at time = 0 provides a weighted average of all of these scenarios. So at the outset, he will prefer whichever engine provides the most value in expectation. Given our estimation, HZ prefers the new engine over the old one, as
+
+\begin{equation*}
+EV_{old}(x = 0) = -71.026 < -65.214 = EV_{new}(x = 0).
+\end{equation*}
 
 \item[(4)]
-
-We want to compute HZ's demand function for the two buses, which we will denote as engine 1 ($\theta_1 = 0.09, RC = 6$) and engine 2 ($\theta_1 = 0.02, RC = 20$) as a function of RC. In order to do so, we obtain conditional choice probability estimates, $\hat{\mathbb{P}}(i = 1 | x)$ by using the Rust method to iterate EV values. We use the Rust methodology because the Hotz and Miller methodology depends on the observed conditional choice probabilities, which we know do \textit{not} correspond to the counterfactual engine 2.
-
-With those conditional choice probability estimates for the two engines in hand, we run 1,000 simulations of a bus's state transitions (and HZ's corresponding engine replacement decisions) over the first 15 periods. This allows us to get an expected, per-bus demand for engines over the first 15 periods. In order to get the expected demand that HZ has for engines across all buses, we simply multiply this figure by 100. So the expected demand (as a function of period $t$) is:
-
-\begin{equation}
-D(t) = 100 \times \sum_{x_t} \hat{\mathbb{P}}(i = 1 | x = x_t) \hat{\mathbb{P}}(x = x_t | t)
-\end{equation}
-
-HZ's demand for engines as a function of the period, $t$ for a few values of RC can be found in Figure \ref{fig:time_demand_rc}. The average per-period demand for the two engines (averaged across 15 periods) for different values of RC can be found in Figure \ref{fig:agg_demand_rc}. it's worth noting that the demand curves for the two engines appear almost identical - although you cannot distinguish them in the figure, there are small differences (on the order of a tenths of an engine. This could be a true difference, or it could be simulation error. Although we're not sure why these demand curves are so similar, we have two hypotheses:
-
-\begin{enumerate}
-\item Whatever our EV estimation issue, it is rearing its ugly head again and making these demand curves very similar.
-\item The increase in RC from engine 1 to engine 2 is almost perfectly offset by the decrease in $\theta_1$, creating two extremely similar demand curves.
-\end{enumerate}
 
 \begin{figure}[ht!]
 \centering
@@ -247,9 +248,25 @@ HZ's demand for engines as a function of the period, $t$ for a few values of RC 
 \begin{figure}[ht!]
 \centering
 	\includegraphics[scale=.25]{aggregate_demand_plot.png}
-\caption{Aggregate per-period demand for new engines across a fleet of 100 buses as a function of RC. For engine 1, $\theta_1 = 0.09$. For engine 2, $\theta_1 = 0.02$.}
+\caption{Aggregate per-period demand for new engines across a fleet of 100 buses as a function of RC. For engine 1, $\theta_1 = 0.05$. For engine 2, $\theta_1 = 0.02$.}
 \label{fig:agg_demand_rc}
 \end{figure}
+
+
+We want to compute HZ's demand function for the two buses, which we will denote as engine 1 ($\theta_1 = 0.05, RC = 10$) and engine 2 ($\theta_1 = 0.02, RC = 20$) as a function of RC. In order to do so, we obtain conditional choice probability estimates, $\hat{\mathbb{P}}(i = 1 | x)$ by using the Rust method to iterate EV values. We use the Rust methodology because the Hotz and Miller methodology depends on the observed conditional choice probabilities, which we know do \textit{not} correspond to the counterfactual engine 2.
+
+With those conditional choice probability estimates for the two engines in hand, we run 1,000 simulations of a bus's state transitions (and HZ's corresponding engine replacement decisions) over the first 15 periods. This allows us to get an expected, per-bus demand for engines over the first 15 periods. In order to get the expected demand that HZ has for engines across all buses, we simply multiply this figure by 100. So the expected demand (as a function of period $t$) is:
+
+\begin{equation}
+D(t) = 100 \times \sum_{x_t} \hat{\mathbb{P}}(i = 1 | x = x_t) \hat{\mathbb{P}}(x = x_t | t)
+\end{equation}
+
+HZ's demand for engines as a function of the period, $t$ for a few values of RC can be found in Figure \ref{fig:time_demand_rc}. The average per-period demand for the two engines (averaged across 15 periods) for different values of RC can be found in Figure \ref{fig:agg_demand_rc}. it's worth noting that the demand curves for the two engines appear almost identical - there are only small differences (on the order of a tenths of an engine) between the two. This could be a true difference, or it could be simulation error. Although we're not sure why these demand curves are so similar, we have two hypotheses:
+
+\begin{enumerate}
+\item Our Rust EV estimates are highly sensitive to initialization. It's possible our estimates for engine 2 are not correct.
+\item The increase in RC from engine 1 to engine 2 is almost perfectly offset by the decrease in $\theta_1$, creating two extremely similar demand curves.
+\end{enumerate}
 
 \item[(5)]
 
@@ -259,9 +276,16 @@ To determine the total value of the engines, assuming marginal cost $RC$, we can
 V_{engine}(RC) - C(RC)= n \cdot \int_{RC}^{\infty} D_{engine}(p) dp - n\cdot RC \cdot D_{engine}(RC)- c > 0
 \end{equation}
 
-\noindent where $n=15$ is the number of periods and $D(p)$ is the amount of demand that HZ would have a given RC and $c$ is the fixed R\&D cost.
+\noindent where $n=15$ is the number of periods and $D(p)$ is the amount of demand that HZ would have a given RC and $c$ is the fixed R\&D cost. Let's assume that $c$ is 0 for engine 1 (the status quo engine). Figure \ref{fig:value_plot} shows the value produced by both engines as a function of $RC$, assuming that $c = 0$. We can see here that, similarly to demand, the value produced by the two engines is very similar.
 
-For engine 1, the total value is 343.3. For engine 2, the total value is 0 (because our estiamted demand is zero at $RC=20$).
+\begin{figure}[ht!]
+\centering
+	\includegraphics[scale=.25]{value_plot.png}
+\caption{Value produced by the two different engines as a function of $RC$. We assume that $c = 0$ (i.e., R\&D costs are zero) for both engines. For engine 1, $\theta_1 = 0.05$. For engine 2, $\theta_1 = 0.02$.}
+\label{fig:value_plot}
+\end{figure}
+
+Theoretically, the maximum justifiable development would be $value_2 - value_1$, if that quantity were positive (otherwise it is zero). For engine 1 at $RC = 10$, the total value is 2,447.1. For engine 2 at $RC = 20$, the total value is 0 (because our estimated demand is zero at $RC=20$). In light of this, there is no R\&D cost at which development of engine 2 would be justified. 
 
 \end{itemize}
 

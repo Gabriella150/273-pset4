@@ -344,8 +344,8 @@ theta_1 = parameter_estimates$theta_1
 beta = parameter_estimates$beta
 RC = parameter_estimates$RC
 
-EV <- matrix(100,33,2)
-EV2 <- matrix(0,33,2)
+EV <- matrix(0,33,2)
+EV2 <- matrix(-80,33,2)
 ### Iteratively compute the EV values.
 while(max(abs(EV-EV2))>cri){
   EV <- EV2
@@ -523,8 +523,8 @@ RC = 10
 
 ### apply Rust's approach
 cri <- 10^(-8)
-EV <- matrix(100,33,2)
-EV2 <- matrix(0,33,2)
+EV <- matrix(0,33,2)
+EV2 <- matrix(-80,33,2)
 
 while(max(abs(EV-EV2))>cri){
   ### Set the current EV to the previous updated EV
@@ -542,8 +542,8 @@ RC = 20
 
 ### repeat the exercise above
 cri <- 10^(-8)
-EV <- matrix(100,33,2)
-EV2 <- matrix(0,33,2)
+EV <- matrix(0,33,2)
+EV2 <- matrix(-80,33,2)
 
 while(max(abs(EV-EV2))>cri){
   ### Set the current EV to the previous updated EV
@@ -613,7 +613,7 @@ RC_range = seq(0, 15, .25)
 n_periods = 15
 n_sims = 1000
 n_buses = 100
-load('hotz_and_miller_estimate.Rdata')
+load('rust_estimate.Rdata')
 
 ## Initialize an empty dataframe to hold results
 estimated_demand_df <- data.frame(time_period = c(),
@@ -630,8 +630,8 @@ for (j in RC_range) {
   cri <- 10^(-8)
   
   ### Set an initial value for the EV matrix (all 0s, EV), and another EV object to hold the updated estimates, EV2.
-  EV <- matrix(100,33,2)
-  EV2 <- matrix(0,33,2)
+  EV <- matrix(0,33,2)
+  EV2 <- matrix(-80,33,2)
   
   ## While the infinity norm is less than the threshold, iterate
   while(max(abs(EV-EV2))>cri){
@@ -676,8 +676,8 @@ for (j in RC_range) {
   cri <- 10^(-8)
   
   ### Set an initial value for the EV matrix (all 0s, EV), and another EV object to hold the updated estimates, EV2.
-  EV <- matrix(100,33,2)
-  EV2 <- matrix(0,33,2)
+  EV <- matrix(0,33,2)
+  EV2 <- matrix(-80,33,2)
   
   ## While the infinity norm is less than the threshold, iterate
   while(max(abs(EV-EV2))>cri){
@@ -723,18 +723,16 @@ ggsave(per_period_demand_plot, file='per_period_demand_plot.png', height=4, widt
 aggregate_demand_plot <- estimated_demand_df %>% 
   group_by(RC, engine) %>% 
   summarise(total_demand = sum(demand)/n_periods) %>% 
-  ungroup() %>% head()
+  ungroup() %>% 
   ggplot(., aes(x=RC, y=total_demand, color=engine)) + geom_line() + xlab('RC') + 
   ylab('Average per-period demand') + ggtitle('Average per-period engine demand for 100 buses') + 
+  theme(plot.title = element_text(hjust = 0.5))
 ggsave(aggregate_demand_plot, file='aggregate_demand_plot.png', height=4, width=6, units='in')
 
 
 ################
 # Question 3.5 #
 ################
-
-head(estimated_demand_df)
-tail(estimated_demand_df)
 
 n_periods = 15
 
@@ -743,14 +741,44 @@ engine_value <- estimated_demand_df %>%
 group_by(RC, engine) %>%
  summarize(avg_demand=mean(demand))
 
-### for engine 1 (original one)
+# Initialize an empty dataframe to hold value as a function of RC for both engines
+engine_value_df <- data.frame(RC = c(), engine_value = c(), engine = c())
+
+## Loop over RC values
+for (j in RC_range) { 
+  # Get the engine 1 value at this RC
+  engine_1_value <- engine_value %>%
+    filter(engine=='Engine 1',RC>=j) %>%
+    summarize(value = RC*avg_demand) %>%
+    summarize(total_value = sum(value)) %>%
+    as.numeric()* n_periods
+  
+  # Get the engine 2 value at this RC
+  engine_2_value <- engine_value %>%
+    filter(engine=='Engine 2',RC>=j) %>%
+    summarize(value = RC*avg_demand) %>%
+    summarize(total_value = sum(value)) %>%
+    as.numeric()* n_periods
+  
+  # Add these two engine values to the dataframe
+  engine_value_df <- rbind(engine_value_df, data.frame(RC = j, engine_value = engine_1_value, engine = 'Engine 1'))
+  engine_value_df <- rbind(engine_value_df, data.frame(RC = j, engine_value = engine_2_value, engine = 'Engine 2'))
+}
+
+# Create a plot of value as a function of RC for both engines
+value_plot <- ggplot(engine_value_df, aes(x=RC, y=engine_value, color=engine)) + geom_line() + 
+  xlab('RC') + ylab('Value') + ggtitle('Value produced by each engine as a function of RC (c=0)') + 
+  theme(plot.title = element_text(hjust = 0.5))
+ggsave(value_plot, file='value_plot.png', height=4, width=6, units='in')
+
+### for engine 1 (original one), calculate value at its true RC
 engine_value %>%
 filter(engine=='Engine 1',RC>=6) %>%
 summarize(value = RC*avg_demand) %>%
 summarize(total_value = sum(value)) %>%
 as.numeric()* n_periods
 
-### for engine 2 (new one)
+### for engine 2 (new one), calculate value at its true RC
 engine_value %>%
 filter(engine=='Engine 2',RC>=20) %>%
 summarize(value = RC*avg_demand) %>%
